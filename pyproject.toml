@@ -1,0 +1,29 @@
+[project]
+name = "sensor-sim"
+version = "0.1.0"
+description = "Mitsuba 3 computational-imaging sensor simulator"
+authors = [
+    { name = "Christian Moore", email = "moorechristian15@yahoo.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.11.2",
+    "mitsuba==3.9.1",
+    "numpy>=2.5.4",
+    "pytest>=9.2.0",
+    "scikit-learn>=1.9.1",
+]
+
+[project.scripts]
+phase0 = "sensor_sim.render:main"
+phase1 = "sensor_sim.phase1:main"
+phase2 = "sensor_sim.phase2:main"
+phase3 = "sensor_sim.phase3:main"
+phase4 = "sensor_sim.phase4:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["uv_build>=0.12.24,<0.13.0"]
+build-backend = "uv_build"
