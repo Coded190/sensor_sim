@@ -139,3 +139,52 @@ Test mean frame IoU:
 These are the means in `metrics.json`, not rounded further. Training means are close to these test means, so the gap is not a split accident. DoLP raises film-frame IoU from 0.445305 to 0.906553. The eight-band cube does not improve on DoLP. The color threshold still wins the eight-frame mean because it leaves every test `pplastic` frame empty. The balanced logistic models call part of the gray ball film, so those frames score 0. `outputs/phase4/overlays.png` shows that on frame `020` and frame `028`. `outputs/phase4/comparison.png` is the bar chart. The full table, including each frame, is `outputs/phase4/metrics.json`.
 
 Isaac Sim Simple Room stays later.
+
+## Partial polyethylene film
+
+`uv run film-sample`, `uv run film-dataset`, and `uv run film-train` are separate from `uv run phase0`. They compare two U-Nets on a partial dielectric cap. Model A reads linear RGB. Model B reads that RGB plus four ideal linear analyzers. The geometry mask is the label. DoLP, AoLP, and S3 are saved and are not inputs.
+
+Blender is not in apt without a password on this machine. The binary in use is the official Blender 4.5.9 tarball at `tools/blender/blender-4.5.9-linux-x64/blender`, which is gitignored. `assets/blender/create_film_scene.py` runs with `--background` and writes `assets/blender/film_ball.blend`. Mitsuba loads the exported OBJ meshes. The Mitsuba Blender add-on is not used.
+
+The scene is Z-up, in meters. The YAML radius 0.05 m is the outer film surface. The plastic sphere stops at 0.05 − 0.00002 m so the shell is the first surface instead of sharing vertices with the ball. The cap covers 0.45 of the sphere, axis `(0, -1, 0)`, toward the camera at `(0, -0.5, 0.2)`. The shell is smooth dielectric, interior IOR 1.50, exterior IOR 1.0, roughness 0. The ball is diffuse reflectance 0.5. The room is gray diffuse reflectance 0.8. These material numbers are provisional. `lighting.intensity` is Mitsuba area-emitter radiance in W/sr/m². Blender's area-light energy is watts. With Normalize on and exposure 0, Cycles uses radiance = energy / (π · width · height), so the blend stores energy = π · width · height · intensity. The lamp is a 0.4 m by 0.4 m rectangle at `(0.45, -0.55, 0.75)`, radiance 10, which is 5.02655 W. It sits beside the camera. The blend assigns a Principled diffuse shader to the ball and the room, and a Principled transmission shader with the same IOR to the film. That transmission shader is a viewport stand-in. Blender does not run Mitsuba's polarized dielectric, so a Blender render has no Stokes image. The viewport uses AgX at exposure +2. The PNG uses a different shoulder, `mapped = (4 * linear) / (1 + 4 * linear)` and then `clip(mapped, 0, 1) ** (1/2.2)`. The EXR stays linear, and training still reads the EXR.
+
+The earlier lamp at `(1, 1, 2)`, 0.2 m by 0.2 m, left mean film S0 at 0.00318666. With the lamp beside the camera, mean film S0 is 0.0602642. A bare diffuse ball in that same light has median linear radiance about 0.51, and the walls about 0.73. The filmed ball's median is about 0.041. Normal-incidence Fresnel reflectance at IOR 1.5 is `((1.5-1)/(1.5+1))^2 = 0.04`, so the cap is mostly a dark reflection of the room plus a small lamp image. Raising the radiance scales the ball and the walls together, and the walls reach 1 first. The 12-image dataset and the U-Net numbers below were rendered with the earlier lamp and have not been regenerated. `elapsed_s` is the wall time of `mi.render` through the NumPy copy. The 512×512 Stokes frame, 64 samples, took 0.918 s on `llvm_ad_spectral_polarized`. No CUDA variant is called.
+
+The film mesh is 160 rings by 512 segments around the axis. A coarser cap let the ball poke through the triangle centers, because the sagitta was larger than the 20 µm thickness, and the mask came out speckled. At this density the sagitta is about 1 µm. The saved mask has 23951 film pixels and 640 edge pixels, one contour.
+
+Stokes channels are read by name and the three spectral copies are averaged. The metadata records that this is a spectral render with constant IOR, not one wavelength. The same frame on `llvm_ad_mono_polarized` has mean absolute DoLP difference 0.00031533794018152845 on pixels where both S0 values clear 1e-4. Analyzer images use
+
+- I0 = (S0 + S1) / 2
+- I45 = (S0 + S2) / 2
+- I90 = (S0 − S1) / 2
+- I135 = (S0 − S2) / 2
+
+with the Stokes vector in Mitsuba's camera frame. Reconstructing S0, S1, and S2 from those four images matches the source to 5.551115123125783e-17. The four analyzers do not measure S3. S3 is stored and its mean absolute value on valid pixels is 0 on this single-bounce dielectric. DoLP on the film reaches 0.999682437531784. The mean DoLP over the 262144 pixels with S0 > 1e-4 is 0.056554749001624674. The same film pixels on an unfilmed control reach max DoLP 0. DoLP is `sqrt(S1^2 + S2^2) / S0` where S0 > 1e-4, else 0. AoLP is `0.5 * arctan2(S2, S1)`, stored as 0 where DoLP < 0.05 or S0 ≤ 1e-4.
+
+The mask is the first-hit `shape_index` of `film-shell`, box filter, 1 sample, same camera as the EXRs. `film_mask.png` stores uint8 values 0 and 1, not 0 and 255. The first sample's overlay is `outputs/film/sample_000001/overlay.png`.
+
+The dataset is 12 images in `outputs/film/dataset`. Train has 7, validation 2, test 3. Views of one scene id stay in one split. Sphere coverages 0.15 and 0.75 are test-only. The ellipsoid, scale `(1, 0.75, 1.25)`, is test-only. Validation checks shapes, finite values, mask values, and that split rule.
+
+Both networks are `FilmUNet`: four 2×2 pools, base width 32, channels 32, 64, 128, 256, bottleneck 512, two 3×3 convolutions with batch norm and ReLU in each block, skip concatenation, and a 1×1 logit. A parameter is one trained scalar, including batch-norm scale and shift. Model A has 7765985 parameters. Model B has 7767137. The difference is the 1152 weights in the first convolution, `(7 − 3) × 32 × 9`.
+
+Training is CPU-only, PyTorch 2.15.0+cpu, `CUDA_VISIBLE_DEVICES` empty. Adam, learning rate 0.001, betas 0.9 and 0.999, weight decay 0, batch size 2, 40 epochs, seed 0, no augmentation. The loss is half BCE-with-logits and half Dice, with Dice smooth constant 1. Inputs are standardized by the training-pixel mean and NumPy standard deviation (divide by N). The film fraction on the training pixels is 148299 / 1835008 = 0.080817, above 0.05, so BCE has no positive-class weight. A prediction is film when the sigmoid probability is above 0.5. The test checkpoint is the epoch with the highest validation mean IoU: epoch 3 for Model A (validation IoU 0.897428) and epoch 10 for Model B (validation IoU 0.924666). Later epochs keep lowering the training loss and the validation IoU falls toward 0, so the last epoch is not the reported model. One epoch takes about 5 s.
+
+IoU is TP / (TP + FP + FN) per image. Precision is TP / (TP + FP). Recall is TP / (TP + FN). An image with no positive label and no positive prediction scores 1. A zero denominator otherwise scores 0. The headline is the mean of the 3 test images. The standard deviation is NumPy's, divide by N. With 3 images that std is a description of this set, not a sampling error from a large test.
+
+| Model | Input | IoU mean | IoU std | Precision mean | Recall mean |
+| --- | --- | ---: | ---: | ---: | ---: |
+| A | RGB | 0.9230452178044396 | 0.02631436004657484 | 0.9735802181652985 | 0.9468904242255695 |
+| B | RGB + I0, I45, I90, I135 | 0.9010834984500997 | 0.056237333366255485 | 0.9061262449672948 | 0.9943124833787476 |
+
+Per test image, IoU / precision / recall, copied from `metrics.json`:
+
+| Sample | Scene | A | B |
+| --- | --- | --- | --- |
+| sample_000010 | sphere coverage 0.15 | 0.9452346041055718 / 0.9632424355621965 / 0.9806054152722847 | 0.8236547014972123 / 0.8236547014972123 / 1.0 |
+| sample_000011 | sphere coverage 0.75 | 0.8860779200560464 / 0.9679421768707483 / 0.9128673964473315 | 0.9240644119965467 / 0.9353343465045593 / 0.9871285937687959 |
+| sample_000012 | ellipsoid coverage 0.45 | 0.9378231292517006 / 0.9895560420629509 / 0.9471984609570923 | 0.9555313818565401 / 0.9593896869001125 / 0.9958088563674465 |
+
+On these three images, adding the analyzers does not raise mean IoU. It raises recall and lowers precision. The low-coverage sphere is the image that drops: Model B's recall is 1 and its precision equals its IoU, so the error is extra film around the cap. DoLP on that frame is bright at the silhouette of the whole ball, which is a larger region than the 0.15 cap. The high-coverage sphere and the ellipsoid both gain IoU. `outputs/film/eval/comparison.png` is the bar chart. `outputs/film/eval/sample_000010_sphere_cov15.png` and `sample_000012_ellipsoid_cov45.png` show RGB, the four analyzers, DoLP, AoLP, the mask, both predictions, and the error maps. The full numbers are `outputs/film/eval/metrics.json`.
+
+This is a 12-image CPU probe. It is not a sim-to-real result. The film is a smooth constant-IOR shell, the analyzers are noiseless, and S3 is not an input.
+

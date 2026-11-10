@@ -1,0 +1,11 @@
+variant: llvm_ad_spectral_polarized
+mono_variant: llvm_ad_mono_polarized
+integrator: path
+max_depth: 8
+spp: 64
+seed: 0
+probe_resolution: 64
+probe_spp: 16
+s0_floor: 0.001
+intensity_factor: 10.0
+intensity_tries: 4

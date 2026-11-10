@@ -11,7 +11,9 @@ dependencies = [
     "mitsuba==3.9.1",
     "numpy>=2.5.4",
     "pytest>=9.2.0",
+    "pyyaml>=6.0.3",
     "scikit-learn>=1.9.1",
+    "torch>=2.15.0",
 ]
 
 [project.scripts]
@@ -20,9 +22,15 @@ phase1 = "sensor_sim.phase1:main"
 phase2 = "sensor_sim.phase2:main"
 phase3 = "sensor_sim.phase3:main"
 phase4 = "sensor_sim.phase4:main"
+film-sample = "sensor_sim.film.sample:main"
+film-dataset = "sensor_sim.film.dataset:main"
+film-train = "sensor_sim.film.train:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[[tool.uv.index]]
+url = "https://download.pytorch.org/whl/cpu"
 
 [build-system]
 requires = ["uv_build>=0.12.24,<0.13.0"]

@@ -1,0 +1,15 @@
+base_channels: 32
+levels: 4
+optimizer: adam
+lr: 0.001
+betas: [0.9, 0.999]
+weight_decay: 0.0
+batch_size: 2
+epochs: 40
+seed: 0
+bce_weight: 0.5
+dice_weight: 0.5
+dice_smooth: 1.0
+probability_threshold: 0.5
+pos_fraction_floor: 0.05
+device: cpu

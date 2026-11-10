@@ -1,0 +1,48 @@
+object:
+  type: sphere
+  radius: 0.05
+  reflectance: 0.5
+film:
+  material: polyethylene
+  thickness: 2.0e-05
+  coverage: 0.45
+  roughness: 0.0
+  ior: 1.5
+  axis:
+  - 0.0
+  - -1.0
+  - 0.0
+camera:
+  resolution:
+  - 512
+  - 512
+  position:
+  - 0.0
+  - -0.5
+  - 0.2
+  target:
+  - 0.0
+  - 0.0
+  - 0.0
+  up:
+  - 0.0
+  - 0.0
+  - 1.0
+  fov_deg: 30.0
+# intensity is Mitsuba area-emitter radiance, in W/sr/m^2. Blender stores
+# the same lamp as power = pi * width * height * intensity watts.
+# The rectangle sits beside the camera so the visible face of the ball is lit.
+lighting:
+  type: area
+  position:
+  - 0.45
+  - -0.55
+  - 0.75
+  intensity: 10.0
+  size:
+  - 0.4
+  - 0.4
+room:
+  reflectance: 0.8
+  margin: 0.25
+  floor_gap: 0.001

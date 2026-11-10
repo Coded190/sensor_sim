@@ -1,0 +1,127 @@
+# One factor changes from the base scene at a time. Views of one scene id
+# share a split. Coverages 0.15 and 0.75, and the ellipsoid, are test only.
+seed: 0
+cameras:
+  default:
+    position: [0.0, -0.5, 0.2]
+    target: [0.0, 0.0, 0.0]
+    up: [0.0, 0.0, 1.0]
+    fov_deg: 30.0
+  side:
+    position: [0.35, -0.35, 0.25]
+    target: [0.0, 0.0, 0.0]
+    up: [0.0, 0.0, 1.0]
+    fov_deg: 30.0
+lights:
+  default:
+    position: [1.0, 1.0, 2.0]
+    intensity: null
+    size: [0.2, 0.2]
+  shifted:
+    position: [0.6, -0.2, 1.2]
+    intensity: null
+    intensity_scale: 1.5
+    size: [0.2, 0.2]
+scenes:
+  - id: sphere_cov45
+    split: train
+    geometry: sphere
+    scale: [1.0, 1.0, 1.0]
+    coverage: 0.45
+    radius: 0.05
+    thickness: 0.00002
+    axis: [0.0, -1.0, 0.0]
+    views:
+      - {camera: default, light: default}
+      - {camera: side, light: default}
+      - {camera: default, light: shifted}
+  - id: sphere_cov25
+    split: train
+    geometry: sphere
+    scale: [1.0, 1.0, 1.0]
+    coverage: 0.25
+    radius: 0.05
+    thickness: 0.00002
+    axis: [0.0, -1.0, 0.0]
+    views:
+      - {camera: default, light: default}
+  - id: sphere_radius04
+    split: train
+    geometry: sphere
+    scale: [1.0, 1.0, 1.0]
+    coverage: 0.45
+    radius: 0.04
+    thickness: 0.00002
+    axis: [0.0, -1.0, 0.0]
+    views:
+      - {camera: default, light: default}
+  - id: sphere_thick
+    split: train
+    geometry: sphere
+    scale: [1.0, 1.0, 1.0]
+    coverage: 0.45
+    radius: 0.05
+    thickness: 0.00004
+    axis: [0.0, -1.0, 0.0]
+    views:
+      - {camera: default, light: default}
+  - id: sphere_cap_tilt
+    split: train
+    geometry: sphere
+    scale: [1.0, 1.0, 1.0]
+    coverage: 0.45
+    radius: 0.05
+    thickness: 0.00002
+    axis: [0.3, -0.8, 0.2]
+    views:
+      - {camera: default, light: default}
+  - id: sphere_cov60
+    split: validation
+    geometry: sphere
+    scale: [1.0, 1.0, 1.0]
+    coverage: 0.60
+    radius: 0.05
+    thickness: 0.00002
+    axis: [0.0, -1.0, 0.0]
+    views:
+      - {camera: default, light: default}
+  - id: sphere_radius06
+    split: validation
+    geometry: sphere
+    scale: [1.0, 1.0, 1.0]
+    coverage: 0.45
+    radius: 0.06
+    thickness: 0.00002
+    axis: [0.0, -1.0, 0.0]
+    views:
+      - {camera: default, light: default}
+  - id: sphere_cov15
+    split: test
+    geometry: sphere
+    scale: [1.0, 1.0, 1.0]
+    coverage: 0.15
+    radius: 0.05
+    thickness: 0.00002
+    axis: [0.0, -1.0, 0.0]
+    views:
+      - {camera: default, light: default}
+  - id: sphere_cov75
+    split: test
+    geometry: sphere
+    scale: [1.0, 1.0, 1.0]
+    coverage: 0.75
+    radius: 0.05
+    thickness: 0.00002
+    axis: [0.0, -1.0, 0.0]
+    views:
+      - {camera: default, light: default}
+  - id: ellipsoid_cov45
+    split: test
+    geometry: ellipsoid
+    scale: [1.0, 0.75, 1.25]
+    coverage: 0.45
+    radius: 0.05
+    thickness: 0.00002
+    axis: [0.0, -1.0, 0.0]
+    views:
+      - {camera: default, light: default}
