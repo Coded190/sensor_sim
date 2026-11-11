@@ -7,7 +7,19 @@ import pytest
 
 from sensor_sim.film.dataset import assert_split_groups, iter_views
 from sensor_sim.film.config import dataset_config
-from sensor_sim.film.geometry import cap_shell, room_box, theta_max, uv_sphere
+from sensor_sim.film.geometry import (
+    CORNELL_HIGH,
+    CORNELL_LOW,
+    ball_center_offset,
+    cap_shell,
+    cornell_shell,
+    platform_mesh,
+    room_box,
+    solid_box,
+    theta_max,
+    uv_sphere,
+    write_obj,
+)
 from sensor_sim.film.lighting import DISPLAY_EXPOSURE, area_power_watts, display_srgb
 from sensor_sim.film.images import read_gray_png, write_gray_png
 from sensor_sim.film.metrics import scores
@@ -43,6 +55,55 @@ def test_room_normals_point_inward():
         centroid = mesh["vertices"][list(face)].mean(axis=0)
         normal = _face_normal(mesh["vertices"], face)
         assert np.dot(normal, center - centroid) > 0.0
+
+
+def test_cornell_shell_is_open_at_the_front_and_inward():
+    walls = cornell_shell()
+    assert set(walls) == {"floor", "ceiling", "wall-back", "wall-left", "wall-right"}
+    center = 0.5 * (CORNELL_LOW + CORNELL_HIGH)
+    for mesh in walls.values():
+        for face in mesh["faces"]:
+            centroid = mesh["vertices"][list(face)].mean(axis=0)
+            assert np.dot(_face_normal(mesh["vertices"], face), center - centroid) > 0.0
+    back = walls["wall-back"]["vertices"][walls["wall-back"]["faces"]].mean(axis=1)
+    assert np.allclose(back[:, 1], CORNELL_HIGH[1])
+    left = walls["wall-left"]["vertices"][walls["wall-left"]["faces"]].mean(axis=1)
+    assert np.allclose(left[:, 0], CORNELL_LOW[0])
+
+
+def test_platform_normals_point_outward_and_ball_sits_on_it():
+    mesh = platform_mesh(0.0)
+    center = mesh["vertices"].mean(axis=0)
+    for face in mesh["faces"]:
+        centroid = mesh["vertices"][list(face)].mean(axis=0)
+        assert np.dot(_face_normal(mesh["vertices"], face), centroid - center) > 0.0
+    offset = ball_center_offset(0.05, 1.0, 0.001, floor_z=0.0)
+    assert offset[2] == pytest.approx(0.04 + 0.001 + 0.05)
+    solid = solid_box(np.array([0.0, 0.0, 0.0]), np.array([1.0, 1.0, 1.0]))
+    assert solid["faces"].shape == (12, 3)
+
+
+def test_flat_box_normals_stay_on_the_face(tmp_path):
+    mesh = platform_mesh(0.0)
+    path = tmp_path / "platform.obj"
+    write_obj(path, mesh["vertices"], mesh["faces"], smooth=False)
+    normals = np.array(
+        [[float(value) for value in line.split()[1:]] for line in path.read_text().splitlines() if line.startswith("vn ")],
+        dtype=np.float64,
+    )
+    assert normals.shape == (36, 3)
+    assert np.allclose(np.max(np.abs(normals), axis=1), 1.0)
+    assert any(np.allclose(normal, [0.0, -1.0, 0.0]) for normal in normals)
+
+
+def test_obj_writer_stores_a_normal_per_vertex(tmp_path):
+    vertices = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+    faces = np.array([[0, 1, 2]])
+    path = tmp_path / "tri.obj"
+    write_obj(path, vertices, faces)
+    text = path.read_text()
+    assert "vn 0.0000000000 0.0000000000 1.0000000000" in text
+    assert "f 1//1 2//2 3//3" in text
 
 
 def test_uv_sphere_is_closed_and_outward():

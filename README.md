@@ -142,15 +142,15 @@ Isaac Sim Simple Room stays later.
 
 ## Partial polyethylene film
 
-`uv run film-sample`, `uv run film-dataset`, and `uv run film-train` are separate from `uv run phase0`. They compare two U-Nets on a partial dielectric cap. Model A reads linear RGB. Model B reads that RGB plus four ideal linear analyzers. The geometry mask is the label. DoLP, AoLP, and S3 are saved and are not inputs.
+`uv run film-sample`, `uv run film-dataset`, `uv run film-train`, and `uv run film-sfp` are separate from `uv run phase0`. They compare two U-Nets on a partial dielectric cap. Model A reads linear RGB. Model B reads that RGB plus four ideal linear analyzers. The geometry mask is the label. DoLP, AoLP, and S3 are saved and are not inputs.
 
 Blender is not in apt without a password on this machine. The binary in use is the official Blender 4.5.9 tarball at `tools/blender/blender-4.5.9-linux-x64/blender`, which is gitignored. `assets/blender/create_film_scene.py` runs with `--background` and writes `assets/blender/film_ball.blend`. Mitsuba loads the exported OBJ meshes. The Mitsuba Blender add-on is not used.
 
-The scene is Z-up, in meters. The YAML radius 0.05 m is the outer film surface. The plastic sphere stops at 0.05 − 0.00002 m so the shell is the first surface instead of sharing vertices with the ball. The cap covers 0.45 of the sphere, axis `(0, -1, 0)`, toward the camera at `(0, -0.5, 0.2)`. The shell is smooth dielectric, interior IOR 1.50, exterior IOR 1.0, roughness 0. The ball is diffuse reflectance 0.5. The room is gray diffuse reflectance 0.8. These material numbers are provisional. `lighting.intensity` is Mitsuba area-emitter radiance in W/sr/m². Blender's area-light energy is watts. With Normalize on and exposure 0, Cycles uses radiance = energy / (π · width · height), so the blend stores energy = π · width · height · intensity. The lamp is a 0.4 m by 0.4 m rectangle at `(0.45, -0.55, 0.75)`, radiance 10, which is 5.02655 W. It sits beside the camera. The blend assigns a Principled diffuse shader to the ball and the room, and a Principled transmission shader with the same IOR to the film. That transmission shader is a viewport stand-in. Blender does not run Mitsuba's polarized dielectric, so a Blender render has no Stokes image. The viewport uses AgX at exposure +2. The PNG uses a different shoulder, `mapped = (4 * linear) / (1 + 4 * linear)` and then `clip(mapped, 0, 1) ** (1/2.2)`. The EXR stays linear, and training still reads the EXR.
+The current scene is an open-front box, Z-up, in meters. The camera is at `(0, -0.55, 0.32)`, looking toward +Y, with a 55° field of view. From that view the left wall (`-X`) is diffuse red `(0.63, 0.06, 0.04)`, the right wall is diffuse green `(0.15, 0.45, 0.09)`, and the back wall is diffuse blue `(0.15, 0.25, 0.65)`. The floor and ceiling are gray diffuse reflectance 0.8. The front wall is omitted. A 0.12 m by 0.12 m pedestal, 0.04 m tall and diffuse yellow `(0.76, 0.64, 0.08)`, lifts the ball. The YAML radius 0.05 m is still the outer film surface. The plastic sphere stops 20 µm inside that, the cap covers 0.45 of the sphere, and the cap axis points toward the camera. The shell is smooth dielectric, interior IOR 1.50, exterior IOR 1.0, roughness 0. The ball is diffuse reflectance 0.5. These material numbers are provisional. Beside the pedestal, on the green side, is the Stanford `dragon_vrip_res4` reconstruction from the Stanford 3D Scanning Repository (Graphics Laboratory, August 1996), scaled to 0.12 m tall and shaded diffuse red `(0.70, 0.05, 0.04)`. The scan is stored in `assets/dragon/`. `lighting.intensity` is Mitsuba area-emitter radiance in W/sr/m². The lamp is a 0.15 m ceiling rectangle at radiance 10. Blender stores the matching power, π · width · height · intensity watts. OBJ files include one averaged normal per vertex. The blend assigns a Principled transmission shader to the film. That shader is a viewport stand-in. Blender does not run Mitsuba's polarized dielectric. The viewport uses AgX at exposure +2. The PNG uses `mapped = (4 * linear) / (1 + 4 * linear)` and then `clip(mapped, 0, 1) ** (1/2.2)`. The EXR stays linear. The display frame is `outputs/film/sample_000001/rgb.png`. On that frame the geometry mask has 5330 film pixels and mean film S0 is 0.00922608.
 
 The earlier lamp at `(1, 1, 2)`, 0.2 m by 0.2 m, left mean film S0 at 0.00318666. With the lamp beside the camera, mean film S0 is 0.0602642. A bare diffuse ball in that same light has median linear radiance about 0.51, and the walls about 0.73. The filmed ball's median is about 0.041. Normal-incidence Fresnel reflectance at IOR 1.5 is `((1.5-1)/(1.5+1))^2 = 0.04`, so the cap is mostly a dark reflection of the room plus a small lamp image. Raising the radiance scales the ball and the walls together, and the walls reach 1 first. The 12-image dataset and the U-Net numbers below were rendered with the earlier lamp and have not been regenerated. `elapsed_s` is the wall time of `mi.render` through the NumPy copy. The 512×512 Stokes frame, 64 samples, took 0.918 s on `llvm_ad_spectral_polarized`. No CUDA variant is called.
 
-The film mesh is 160 rings by 512 segments around the axis. A coarser cap let the ball poke through the triangle centers, because the sagitta was larger than the 20 µm thickness, and the mask came out speckled. At this density the sagitta is about 1 µm. The saved mask has 23951 film pixels and 640 edge pixels, one contour.
+The film mesh is 160 rings by 512 segments around the axis. A coarser cap let the ball poke through the triangle centers, because the sagitta was larger than the 20 µm thickness, and the mask came out speckled. At this density the sagitta is about 1 µm. On the earlier close-up camera that mask had 23951 film pixels and 640 edge pixels, one contour. The Cornell frame above is the same mesh seen from farther away, so the pixel count is 5330.
 
 Stokes channels are read by name and the three spectral copies are averaged. The metadata records that this is a spectral render with constant IOR, not one wavelength. The same frame on `llvm_ad_mono_polarized` has mean absolute DoLP difference 0.00031533794018152845 on pixels where both S0 values clear 1e-4. Analyzer images use
 
@@ -187,4 +187,37 @@ Per test image, IoU / precision / recall, copied from `metrics.json`:
 On these three images, adding the analyzers does not raise mean IoU. It raises recall and lowers precision. The low-coverage sphere is the image that drops: Model B's recall is 1 and its precision equals its IoU, so the error is extra film around the cap. DoLP on that frame is bright at the silhouette of the whole ball, which is a larger region than the 0.15 cap. The high-coverage sphere and the ellipsoid both gain IoU. `outputs/film/eval/comparison.png` is the bar chart. `outputs/film/eval/sample_000010_sphere_cov15.png` and `sample_000012_ellipsoid_cov45.png` show RGB, the four analyzers, DoLP, AoLP, the mask, both predictions, and the error maps. The full numbers are `outputs/film/eval/metrics.json`.
 
 This is a 12-image CPU probe. It is not a sim-to-real result. The film is a smooth constant-IOR shell, the analyzers are noiseless, and S3 is not an input.
+
+## Shape from polarization
+
+`uv run film-sfp` renders two views of two scenes with `cuda_ad_spectral_polarized` and fits camera-frame shading normals. Mean angular error is the mean, over pixels in one region with S0 > 1e-4 and a unit normal, of `arccos(clip(dot(prediction, truth), -1, 1))` in degrees. The truth is the Mitsuba shading normal `nn`, rotated into the camera and pointed back at the camera. View A is the only training view. View B is a sideways camera of the same objects. The loss is the mean of `1 - dot(prediction, truth)` on object pixels. Wall pixels are left out of the loss. Training is 20 epochs, 4 steps per epoch, batch 4 crops of 256², Adam, learning rate 0.001, seed 0, CPU. The three inputs are Stokes plus DoLP plus `cos(2 AoLP)` and `sin(2 AoLP)`, the four ideal analyzers, and linear RGB. Each also gets the per-pixel view direction. AoLP is `0.5 * arctan2(S2, S1)`, stored as 0 where DoLP < 0.05.
+
+The standard scene is one opaque `pplastic` ball, interior IOR 1.5, exterior IOR 1.0, diffuse reflectance 0.5, Beckmann alpha 0.1, in a gray room of reflectance 0.6. The ball covers 111091 / 262144 = 0.4238 of view A and 86317 / 262144 = 0.3293 of view B. Max DoLP on the ball is 0.819473 on view A. The Fresnel baseline uses the diffuse branch, so the azimuth equals AoLP, and it takes the smaller zenith when the curve has two matches. The oracle also tries azimuth + π and keeps the candidate closer to the truth. That oracle is not the baseline.
+
+| Model | View A ball | View B ball |
+| --- | ---: | ---: |
+| Stokes | 4.205 | 7.245 |
+| Analyzers | 3.911 | 8.776 |
+| RGB | 3.589 | 8.149 |
+| Fresnel diffuse | 61.698 | 60.354 |
+| Fresnel oracle | 39.658 | 38.723 |
+
+On this ball, RGB matches the polarization networks on the held-out camera. The fit is real, and it does not show that polarization is what carried the normal. The closed-form Fresnel error stays near 60°.
+
+The Cornell scene keeps the filmed ball and replaces the dragon with smooth copper (`material: Cu`). Dragon max DoLP on view A is 0.405396, above the 0.2 gate. The Fresnel baseline uses the specular branch on the film only, azimuth = AoLP + π/2, and is not applied to the copper. The visible diffuse ball is the sliver past the cap: 239 pixels on view A and 354 on view B.
+
+| Model | View | Film | Dragon | Ball | Objects |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Stokes | A | 6.555 | 20.558 | 10.244 | 15.482 |
+| Stokes | B | 7.212 | 24.922 | 13.308 | 19.424 |
+| Analyzers | A | 11.299 | 29.064 | 15.022 | 22.607 |
+| Analyzers | B | 8.307 | 33.101 | 17.751 | 25.429 |
+| RGB | A | 17.482 | 32.710 | 24.419 | 27.244 |
+| RGB | B | 21.371 | 36.904 | 27.803 | 32.111 |
+| Fresnel specular | A | 65.404 |  |  |  |
+| Fresnel specular | B | 64.232 |  |  |  |
+| Fresnel oracle | A | 39.053 |  |  |  |
+| Fresnel oracle | B | 38.765 |  |  |  |
+
+On the held-out Cornell camera, Stokes stays ahead of RGB on the film (7.212° against 21.371°) and on the copper dragon (24.922° against 36.904°). These are two views of one scene, not the 21 held-out images in Ba et al. (ECCV 2020), whose learned model reported 18.5° and whose physics baselines sat between 41.4° and 49.0°. The numbers are in `outputs/film/sfp/summary.json`. Display frames and error images are under `outputs/film/sfp/standard/` and `outputs/film/sfp/cornell/`.
 

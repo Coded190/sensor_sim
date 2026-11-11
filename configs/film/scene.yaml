@@ -18,30 +18,34 @@ camera:
   - 512
   position:
   - 0.0
-  - -0.5
-  - 0.2
+  - -0.55
+  - 0.32
   target:
   - 0.0
   - 0.0
-  - 0.0
+  - 0.18
   up:
   - 0.0
   - 0.0
   - 1.0
-  fov_deg: 30.0
+  fov_deg: 55.0
 # intensity is Mitsuba area-emitter radiance, in W/sr/m^2. Blender stores
 # the same lamp as power = pi * width * height * intensity watts.
-# The rectangle sits beside the camera so the visible face of the ball is lit.
+# The rectangle hangs on the ceiling and aims into the open front.
 lighting:
   type: area
   position:
-  - 0.45
-  - -0.55
-  - 0.75
+  - 0.0
+  - 0.0
+  - 0.598
   intensity: 10.0
   size:
-  - 0.4
-  - 0.4
+  - 0.15
+  - 0.15
+  up:
+  - 0.0
+  - 1.0
+  - 0.0
 room:
   reflectance: 0.8
   margin: 0.25

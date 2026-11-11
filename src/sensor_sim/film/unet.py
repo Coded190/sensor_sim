@@ -1,8 +1,9 @@
 """Ronneberger U-Net with four pools and a base width of 32.
 
-The module returns one logit channel. The probability is the sigmoid of
-that logit. Model A uses 3 input channels and Model B uses 7. The first
-convolution is the only layer whose weight count changes.
+The mask models use 3 or 7 input channels and one logit. The probability
+is the sigmoid of that logit. ``out_channels`` widens the last 1x1 layer,
+which is how the normal model emits a 3-vector. The first convolution is
+the only encoder layer whose weight count changes with the input width.
 """
 
 from __future__ import annotations
@@ -32,10 +33,12 @@ class ConvBlock(nn.Module):
 
 
 class FilmUNet(nn.Module):
-    def __init__(self, in_channels: int, base_channels: int = 32) -> None:
+    def __init__(self, in_channels: int, base_channels: int = 32, out_channels: int = 1) -> None:
         super().__init__()
-        if in_channels not in (3, 7):
-            raise ValueError(f"in_channels must be 3 or 7, got {in_channels}")
+        if int(in_channels) < 1:
+            raise ValueError(f"in_channels must be positive, got {in_channels}")
+        if int(out_channels) < 1:
+            raise ValueError(f"out_channels must be positive, got {out_channels}")
         widths = [base_channels * (2**level) for level in range(5)]
         self.encoders = nn.ModuleList()
         incoming = in_channels
@@ -60,7 +63,7 @@ class FilmUNet(nn.Module):
                 ConvBlock(widths[0] * 2, widths[0]),
             ]
         )
-        self.head = nn.Conv2d(widths[0], 1, kernel_size=1)
+        self.head = nn.Conv2d(widths[0], int(out_channels), kernel_size=1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if x.shape[-1] % 16 or x.shape[-2] % 16:

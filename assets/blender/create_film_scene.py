@@ -10,6 +10,7 @@ Mitsuba's polarized dielectric, so a Blender render has no Stokes image.
 from __future__ import annotations
 
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -19,7 +20,22 @@ import mathutils
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-from sensor_sim.film.geometry import cap_shell, floor_z, reference_points, room_box, uv_sphere, write_obj
+from sensor_sim.film.geometry import (
+    CORNELL_HIGH,
+    CORNELL_LOW,
+    DRAGON_CENTER_XY,
+    DRAGON_HEIGHT,
+    DRAGON_REFLECTANCE,
+    PLATFORM_REFLECTANCE,
+    WALL_COLORS,
+    ball_center_offset,
+    cap_shell,
+    cornell_shell,
+    platform_mesh,
+    reference_points,
+    uv_sphere,
+    write_obj,
+)
 from sensor_sim.film.lighting import area_power_watts
 
 
@@ -72,6 +88,56 @@ def _assign(obj, material) -> None:
     obj.data.materials.append(material)
 
 
+def _smooth(obj) -> None:
+    for polygon in obj.data.polygons:
+        polygon.use_smooth = True
+    obj.data.update()
+
+
+def _export(obj, path, smooth: bool = True) -> None:
+    write_obj(path, _world_vertices(obj), _triangles(obj.data), smooth=smooth)
+
+
+def _place_dragon(path: Path, floor_z: float):
+    """Stand the Stanford scan on the floor. The PLY is Y-up."""
+    before = set(bpy.data.objects)
+    bpy.ops.wm.ply_import(filepath=str(path))
+    created = [obj for obj in bpy.data.objects if obj not in before and obj.type == "MESH"]
+    if len(created) != 1:
+        names = [obj.name for obj in created]
+        raise RuntimeError(f"expected one dragon mesh from {path}, got {names}")
+    dragon = created[0]
+    dragon.name = "dragon"
+    # +90° about X sends the scan's +Y up-axis to +Z. The opposite sign
+    # puts the back on the floor and the feet in the air.
+    dragon.rotation_euler = (math.radians(90.0), 0.0, 0.0)
+    bpy.context.view_layer.update()
+    height = _world_span(dragon)[2]
+    if height <= 0.0:
+        raise RuntimeError(f"dragon from {path} has no height")
+    factor = DRAGON_HEIGHT / height
+    dragon.scale = (factor, factor, factor)
+    bpy.context.view_layer.update()
+    low, high = _world_bounds(dragon)
+    dragon.location.x += DRAGON_CENTER_XY[0] - 0.5 * (low.x + high.x)
+    dragon.location.y += DRAGON_CENTER_XY[1] - 0.5 * (low.y + high.y)
+    dragon.location.z += float(floor_z) - low.z
+    bpy.context.view_layer.update()
+    return dragon
+
+
+def _world_bounds(obj):
+    corners = [obj.matrix_world @ mathutils.Vector(corner) for corner in obj.bound_box]
+    low = mathutils.Vector((min(corner.x for corner in corners), min(corner.y for corner in corners), min(corner.z for corner in corners)))
+    high = mathutils.Vector((max(corner.x for corner in corners), max(corner.y for corner in corners), max(corner.z for corner in corners)))
+    return low, high
+
+
+def _world_span(obj):
+    low, high = _world_bounds(obj)
+    return high - low
+
+
 def main() -> None:
     params = _args()
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -90,8 +156,12 @@ def main() -> None:
     reflectance = float(params["reflectance"])
     room_reflectance = float(params["room_reflectance"])
     ior = float(params["ior"])
+    gap = float(params["floor_gap"])
+    floor = float(CORNELL_LOW[2])
+    offset = ball_center_offset(radius, scale[2], gap, floor_z=floor)
     ball_mesh = uv_sphere(radius - thickness, scale=scale, n_rings=128, n_phi=256)
-    ball = _mesh_object("ball", ball_mesh["vertices"], ball_mesh["faces"])
+    ball = _mesh_object("ball", ball_mesh["vertices"] + offset, ball_mesh["faces"])
+    _smooth(ball)
     _assign(
         ball,
         _principled(
@@ -105,32 +175,45 @@ def main() -> None:
     )
 
     shell = cap_shell(radius, thickness, coverage, axis, scale=scale, n_rings=160, n_phi=512)
-    film = _mesh_object("film-shell", shell["vertices"], shell["faces"])
+    film = _mesh_object("film-shell", shell["vertices"] + offset, shell["faces"])
+    _smooth(film)
     _assign(film, _principled("film-shell", (1.0, 1.0, 1.0, 1.0), transmission=1.0, ior=ior, roughness=0.0, specular=0.5))
 
-    z_floor = floor_z(radius, scale[2], float(params["floor_gap"]))
-    margin = float(params["margin"])
-    points = [
-        [-radius * scale[0], -radius * scale[1], z_floor],
-        [radius * scale[0], radius * scale[1], radius * scale[2]],
-        list(params["camera"]["position"]),
-        list(params["light"]["position"]),
-    ]
-    array = __import__("numpy").asarray(points, dtype=float)
-    low = array.min(axis=0) - margin
-    high = array.max(axis=0) + margin
-    low[2] = z_floor
-    box = room_box(low, high)
-    room = _mesh_object("room", box["vertices"], box["faces"])
+    pedestal = platform_mesh(floor)
+    platform = _mesh_object("platform", pedestal["vertices"], pedestal["faces"])
+    # Leave the pedestal flat. Averaged corner normals point through the floor.
     _assign(
-        room,
+        platform,
         _principled(
-            "room",
-            (room_reflectance, room_reflectance, room_reflectance, 1.0),
+            "platform",
+            (*PLATFORM_REFLECTANCE, 1.0),
             transmission=0.0,
             ior=1.5,
             roughness=1.0,
             specular=0.0,
+        ),
+    )
+
+    wall_objects = {}
+    for name, mesh in cornell_shell().items():
+        color = WALL_COLORS.get(name, (room_reflectance, room_reflectance, room_reflectance))
+        obj = _mesh_object(name, mesh["vertices"], mesh["faces"])
+        _smooth(obj)
+        _assign(obj, _principled(name, (*color, 1.0), transmission=0.0, ior=1.5, roughness=1.0, specular=0.0))
+        wall_objects[name] = obj
+
+    dragon_path = ROOT / "assets" / "dragon" / "dragon_vrip_res4.ply"
+    dragon = _place_dragon(dragon_path, floor)
+    _smooth(dragon)
+    _assign(
+        dragon,
+        _principled(
+            "dragon",
+            (*DRAGON_REFLECTANCE, 1.0),
+            transmission=0.0,
+            ior=1.5,
+            roughness=0.6,
+            specular=0.2,
         ),
     )
 
@@ -149,7 +232,8 @@ def main() -> None:
     light = bpy.data.objects.new("light", light_data)
     light.location = params["light"]["position"]
     bpy.context.collection.objects.link(light)
-    _look_at(light, params["camera"]["target"], "-Z", "Z")
+    light_up = "Y" if abs(float(params["light"].get("up", [0, 0, 1])[1])) > 0.5 else "Z"
+    _look_at(light, params["camera"]["target"], "-Z", light_up)
 
     camera_data = bpy.data.cameras.new("camera")
     camera_data.angle = float(params["camera"]["fov_deg"]) * 3.141592653589793 / 180.0
@@ -178,14 +262,19 @@ def main() -> None:
     blend_path.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(blend_path))
 
-    write_obj(out_dir / "ball.obj", _world_vertices(ball), _triangles(ball.data))
-    write_obj(out_dir / "film_cap.obj", _world_vertices(film), _triangles(film.data))
-    room = bpy.data.objects["room"]
-    write_obj(out_dir / "room.obj", _world_vertices(room), _triangles(room.data))
+    _export(ball, out_dir / "ball.obj")
+    _export(film, out_dir / "film_cap.obj")
+    _export(platform, out_dir / "platform.obj", smooth=False)
+    _export(dragon, out_dir / "dragon.obj")
+    for name, obj in wall_objects.items():
+        _export(obj, out_dir / f"{name}.obj")
 
-    refs = reference_points(radius, coverage, axis, scale=scale, floor_z=z_floor)
-    # A point on the far wall, offset in x so the camera ray misses the ball.
-    refs["floor"] = __import__("numpy").array([0.22, float(high[1]), 0.3], dtype=float)
+    refs = reference_points(radius, coverage, axis, scale=scale, floor_z=floor)
+    refs["film"] = refs["film"] + offset
+    refs["uncovered"] = refs["uncovered"] + offset
+    # Upper left of the blue back wall, clear of the ball and the dragon.
+    refs["floor"] = __import__("numpy").array([-0.2, float(CORNELL_HIGH[1]), 0.4], dtype=float)
+    object_names = ["ball", "film-shell", "platform", "dragon", *wall_objects, "light", "camera"]
     poses = {
         "camera": params["camera"],
         "light": {
@@ -198,23 +287,28 @@ def main() -> None:
         "materials": {
             "ball": "Principled diffuse, reflectance from YAML, specular 0",
             "film-shell": "Principled transmission, Mitsuba dielectric IOR, roughness 0. Not a polarized BSDF.",
-            "room": "Principled diffuse, room reflectance, specular 0",
+            "platform": "Principled diffuse pedestal",
+            "dragon": "Stanford dragon_vrip_res4, red diffuse (0.70, 0.05, 0.04). Y-up scan, +90 deg about X so +Y becomes +Z.",
+            "floor": "gray diffuse",
+            "ceiling": "gray diffuse",
+            **{name: f"diffuse RGB {color}" for name, color in WALL_COLORS.items()},
         },
-        "room_low": [float(v) for v in low],
-        "room_high": [float(v) for v in high],
-        "floor_z": z_floor,
+        "room_low": [float(v) for v in CORNELL_LOW],
+        "room_high": [float(v) for v in CORNELL_HIGH],
+        "floor_z": floor,
+        "ball_center": [float(v) for v in offset],
         "points": {
             "film": refs["film"].tolist(),
             "uncovered": refs["uncovered"].tolist(),
             "floor": refs["floor"].tolist(),
             "uncovered_visible": refs["uncovered_visible"],
         },
-        "objects": ["ball", "film-shell", "room", "light", "camera"],
+        "objects": object_names,
     }
     Path(params["poses"]).write_text(json.dumps(poses, indent=2) + "\n")
     print(
         f"film blender=ok blend={blend_path} objects={','.join(poses['objects'])} "
-        f"floor_z={z_floor:.6f} radiance={radiance:.6g} power_watts={power_watts:.6g}"
+        f"floor_z={floor:.6f} radiance={radiance:.6g} power_watts={power_watts:.6g}"
     )
 
 
