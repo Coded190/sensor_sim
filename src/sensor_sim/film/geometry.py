@@ -8,6 +8,8 @@ of the dielectric volume.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 
 FLOOR_GAP = 1e-3
@@ -344,3 +346,53 @@ def write_obj(path, vertices: np.ndarray, faces: np.ndarray, *, smooth: bool = T
         corners = " ".join(f"{int(index) + 1}//{int(index) + 1}" for index in face)
         lines.append(f"f {corners}")
     path.write_text("\n".join(lines) + "\n")
+
+
+def read_ascii_ply(path: Path) -> dict[str, np.ndarray]:
+    """Triangles from an ASCII PLY. Faces that are not triangles raise."""
+    lines = Path(path).read_text().splitlines()
+    if not lines or lines[0].strip() != "ply":
+        raise RuntimeError(f"{path} is not a PLY file")
+    vertex_count = None
+    face_count = None
+    header_end = None
+    for index, line in enumerate(lines):
+        if line.startswith("element vertex"):
+            vertex_count = int(line.split()[-1])
+        elif line.startswith("element face"):
+            face_count = int(line.split()[-1])
+        elif line.strip() == "end_header":
+            header_end = index
+            break
+    if header_end is None or vertex_count is None or face_count is None:
+        raise RuntimeError(f"{path} is missing a vertex or face count")
+    start = header_end + 1
+    vertices = np.array(
+        [[float(value) for value in lines[start + row].split()[:3]] for row in range(vertex_count)],
+        dtype=np.float64,
+    )
+    faces = []
+    for line in lines[start + vertex_count : start + vertex_count + face_count]:
+        parts = [int(value) for value in line.split()]
+        if parts[0] != 3:
+            raise RuntimeError(f"{path} has a {parts[0]}-gon; only triangles are supported")
+        faces.append(parts[1:4])
+    return {"vertices": vertices, "faces": np.asarray(faces, dtype=np.int64)}
+
+
+def stand_dragon(vertices: np.ndarray) -> np.ndarray:
+    """Y-up scan to Z-up, scaled to ``DRAGON_HEIGHT`` and stood on z = 0.
+
+    +90° about X sends the scan's +Y to +Z. The opposite sign stands the
+    model on its back.
+    """
+    vertices = np.asarray(vertices, dtype=np.float64)
+    spun = np.stack([vertices[:, 0], -vertices[:, 2], vertices[:, 1]], axis=1)
+    height = float(spun[:, 2].max() - spun[:, 2].min())
+    if height <= 0.0:
+        raise RuntimeError("dragon mesh has no height after the Y-up rotation")
+    spun *= DRAGON_HEIGHT / height
+    spun[:, 0] += float(DRAGON_CENTER_XY[0]) - 0.5 * float(spun[:, 0].min() + spun[:, 0].max())
+    spun[:, 1] += float(DRAGON_CENTER_XY[1]) - 0.5 * float(spun[:, 1].min() + spun[:, 1].max())
+    spun[:, 2] -= float(spun[:, 2].min())
+    return spun

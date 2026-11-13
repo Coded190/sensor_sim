@@ -9,8 +9,14 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import time
 from pathlib import Path
+
+# The mask run is CPU-only. Set this before Torch is imported, or a visible
+# GPU would fail the check in train_models(). The normal experiment does not
+# import this module, so it can still see the GPU.
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 import matplotlib.pyplot as plt
 import mitsuba as mi

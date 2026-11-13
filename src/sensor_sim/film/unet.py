@@ -8,10 +8,6 @@ the only encoder layer whose weight count changes with the input width.
 
 from __future__ import annotations
 
-import os
-
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
-
 import torch
 from torch import nn
 

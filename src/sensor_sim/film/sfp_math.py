@@ -186,6 +186,75 @@ def mean_angular_error_deg(prediction: np.ndarray, truth: np.ndarray, mask: np.n
     return float(np.mean(angular_error_deg(prediction, truth)[chosen]))
 
 
+# Same cutoffs as SfPUEL's ``normal_criterion.py``. The comparison is strict.
+ANGLE_CUTOFFS_DEG = (11.25, 22.5, 30.0)
+MIN_FREE_BYTES = 8 * (1024**3)
+
+
+def angle_fractions(degrees: np.ndarray) -> dict:
+    """Share of angles strictly below 11.25°, 22.5°, and 30°. An empty input is NaN."""
+    degrees = np.asarray(degrees, dtype=np.float64).reshape(-1)
+    if degrees.size == 0:
+        return {
+            "fraction_below_11_25": float("nan"),
+            "fraction_below_22_5": float("nan"),
+            "fraction_below_30": float("nan"),
+        }
+    return {
+        "fraction_below_11_25": float(np.mean(degrees < ANGLE_CUTOFFS_DEG[0])),
+        "fraction_below_22_5": float(np.mean(degrees < ANGLE_CUTOFFS_DEG[1])),
+        "fraction_below_30": float(np.mean(degrees < ANGLE_CUTOFFS_DEG[2])),
+    }
+
+
+def angular_error_summary(prediction: np.ndarray, truth: np.ndarray, mask: np.ndarray) -> dict:
+    """Mean, median, and the fraction of angles strictly below 11.25°, 22.5°, and 30°.
+
+    The mean is ``mean_angular_error_deg``. The median is the midpoint of the
+    same angles. Each fraction is the count of angles below the cutoff divided
+    by the number of masked pixels. An empty mask scores NaN and zero pixels.
+    """
+    chosen = np.asarray(mask, dtype=bool)
+    pixels = int(chosen.sum())
+    if pixels == 0:
+        return {
+            "mae_deg": float("nan"),
+            "median_deg": float("nan"),
+            **angle_fractions(np.array([])),
+            "pixels": 0,
+        }
+    degrees = angular_error_deg(prediction, truth)[chosen]
+    return {
+        "mae_deg": float(np.mean(degrees)),
+        "median_deg": float(np.median(degrees)),
+        **angle_fractions(degrees),
+        "pixels": pixels,
+    }
+
+
+def mean_abs_s3_over_s0(s3: np.ndarray, s0: np.ndarray, mask: np.ndarray) -> float:
+    """Mean of ``|S3| / S0`` on masked pixels with S0 above the Stokes floor."""
+    chosen = np.asarray(mask, dtype=bool) & (np.asarray(s0, dtype=np.float64) > S0_MIN)
+    if int(chosen.sum()) == 0:
+        return float("nan")
+    return float(np.mean(np.abs(np.asarray(s3, dtype=np.float64)[chosen]) / np.asarray(s0, dtype=np.float64)[chosen]))
+
+
+def choose_device(cuda_available: bool, free_bytes: int | None, minimum_bytes: int = MIN_FREE_BYTES) -> tuple[str, str]:
+    """GPU when Torch can see CUDA and at least ``minimum_bytes`` are free. Otherwise CPU.
+
+    Nothing is killed to free the GPU. ``free_bytes`` is what
+    ``torch.cuda.mem_get_info`` reports, or None when that cannot be read.
+    """
+    if not cuda_available:
+        return "cpu", "torch.cuda.is_available() is false"
+    if free_bytes is None:
+        return "cpu", "free GPU memory could not be read"
+    if int(free_bytes) < int(minimum_bytes):
+        return "cpu", f"free GPU memory {int(free_bytes)} bytes is below {int(minimum_bytes)} bytes"
+    return "cuda", "torch.cuda.is_available() and at least 8 GiB is free"
+
+
 def object_pixel_mask(shape_index: np.ndarray, object_indices: set[int], s0: np.ndarray) -> np.ndarray:
     """Object pixels whose S0 clears the Stokes floor. Walls are not included."""
     index = np.rint(np.asarray(shape_index)).astype(np.int64)

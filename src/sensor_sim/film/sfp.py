@@ -1,9 +1,10 @@
-"""Render two polarized views and fit camera-frame normals.
+"""Render polarized views and fit camera-frame normals on the outer film.
 
-The gray ``pplastic`` ball is the scene that matches the usual
-shape-from-polarization assumptions. The Cornell box, with a copper
-dragon, is the stress scene. Renders use ``cuda_ad_spectral_polarized``.
-Training stays on CPU. View B is never an input to the optimizer.
+``uv run film-sfp`` runs experiment 01 (Cornell, film loss only) and
+experiment 02 (50 training shapes and 10 held-out shapes). Renders use
+``cuda_ad_spectral_polarized``. Training uses the GPU when Torch can see
+one with at least 8 GiB free, and the CPU otherwise. The earlier gray-ball
+run is ``run_previous_sfp`` and is not what the entry point calls.
 
 Mean angular error is the mean, over pixels in one region with S0 > 1e-4,
 of ``arccos(clip(dot(prediction, truth), -1, 1))`` in degrees.
@@ -444,9 +445,19 @@ def _region_scores(view: dict, predicted: np.ndarray, loss_mask: np.ndarray) -> 
     return scores
 
 
+def _view_dir(scene_name: str, view: dict) -> Path:
+    recorded = view.get("out_dir")
+    if recorded is not None:
+        return Path(recorded)
+    return OUTPUT / scene_name / view["view"]
+
+
 def _write_prediction_images(scene_name: str, view: dict, model_name: str, predicted: np.ndarray, scores: dict) -> None:
-    out_dir = OUTPUT / scene_name / view["view"]
-    mask = np.linalg.norm(predicted, axis=-1) > 0.5
+    out_dir = _view_dir(scene_name, view)
+    if view.get("film_only"):
+        mask = _loss_mask(view["measurement"], set(view["object_indices"]))
+    else:
+        mask = np.linalg.norm(predicted, axis=-1) > 0.5
     _save_normals(out_dir / f"normal_{model_name}.png", predicted, mask)
     degrees = angular_error_deg(predicted, view["measurement"]["normal"])
     title = (
@@ -509,7 +520,7 @@ def score_fresnel(scene_name: str, view: dict) -> dict:
             painted[region] = fresnel_normals(
                 measurement["dolp"], measurement["aolp"], measurement["view"], branch
             )[region]
-        out_dir = OUTPUT / scene_name / view["view"]
+        out_dir = _view_dir(scene_name, view)
         _save_normals(out_dir / "normal_fresnel.png", painted, combined)
         degrees = angular_error_deg(painted, measurement["normal"])
         mean = mean_angular_error_deg(painted, measurement["normal"], combined)
@@ -527,9 +538,23 @@ def _drop_measurement(record: dict) -> dict:
 
 
 def main() -> None:
+    """Render and train experiment 01, experiment 02, or both.
+
+    The previous gray-ball and Cornell entry point is ``run_previous_sfp``.
+    ``uv run film-sfp`` now prepares the held-out film experiments. Numeric
+    tables are written by that run, under ``01_cornell_film`` and
+    ``02_heldout_shapes``, and the old ``summary.json`` is left in place.
+    """
+    from sensor_sim.film.heldout import main as run_heldout
+
+    run_heldout()
+
+
+def run_previous_sfp() -> None:
+    """The two-view gray ball and the Cornell stress scene that includes the dragon in the loss."""
     configure_logging()
     logger.info(
-        "sfp variant=%s note=gpu_shared_with_other_process memory_headroom_checked",
+        "sfp variant=%s note=previous_experiment",
         VARIANT,
     )
     standard_a = render_standard("view_a", STANDARD_CAMERA_A)

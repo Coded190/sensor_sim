@@ -221,3 +221,39 @@ The Cornell scene keeps the filmed ball and replaces the dragon with smooth copp
 
 On the held-out Cornell camera, Stokes stays ahead of RGB on the film (7.212° against 21.371°) and on the copper dragon (24.922° against 36.904°). These are two views of one scene, not the 21 held-out images in Ba et al. (ECCV 2020), whose learned model reported 18.5° and whose physics baselines sat between 41.4° and 49.0°. The numbers are in `outputs/film/sfp/summary.json`. Display frames and error images are under `outputs/film/sfp/standard/` and `outputs/film/sfp/cornell/`.
 
+## Held-out filmed shapes
+
+`uv run film-sfp` runs the two experiments below. `uv run film-sfp 01` and `uv run film-sfp 02` run one of them. The numeric tables are written by that command into `outputs/film/sfp/01_cornell_film/summary.json` and `outputs/film/sfp/02_heldout_shapes/summary.json`. This checkout does not contain those tables. The renders and the training are meant to run on a machine whose GPU is free. The previous `outputs/film/sfp/summary.json` is left as it is.
+
+Both experiments use `cuda_ad_spectral_polarized`, 512², 64 samples, seed 0, and a maximum path depth of 8. The lamp is the near ceiling rectangle and it is unpolarized. There is no polarizer and no quarter-wave plate. Experiment 01 keeps the Cornell lamp from `configs/film/scene.yaml` (radiance 10). Experiment 02 uses the gray-room rectangle at radiance 18 and aims it at a fixed point, so the lamp does not turn toward each object. A polarized source is a later experiment.
+
+The loss, the error PNGs, and every reported angle use the outer film only. A pixel counts when its shape index is the film shell, S0 is above 1e-4, and the shading normal has unit length. Walls, the inner diffuse solid, and the copper mesh are omitted. The copper mesh stays in the Cornell picture. The summary has no key for it, and the error PNGs leave those pixels blank.
+
+Mean angular error is the mean of `arccos(clip(dot(prediction, truth), -1, 1))` in degrees on those pixels. The median is the median of the same angles. The three fractions are the share of those angles strictly below 11.25°, 22.5°, and 30°. The comparison is `<`, the same cutoff SfPUEL's `normal_criterion.py` uses. Experiment 02 reports each test shape and the unweighted mean of the ten shape scores. A larger film does not count more than a smaller one. The Fresnel baseline is the specular branch on the film, azimuth = AoLP + π/2, and it keeps the smaller zenith. The oracle, which also tries azimuth + π, is labeled separately and is not the baseline. S3 is saved in `measurement.npz` and drawn as `s3.png`. The summary reports the mean of `|S3| / S0` on the same film pixels. S3 is not a network input.
+
+Training starts after that experiment's renders. If `torch.cuda.is_available()` and `torch.cuda.mem_get_info` reports at least 8 GiB free, training uses that GPU. Otherwise it uses the CPU and the log says why. Nothing else on the machine is killed. The mask trainer is still CPU-only: `src/sensor_sim/film/train.py` clears `CUDA_VISIBLE_DEVICES` before it imports Torch, and the shape job does not import that module.
+
+`uv.lock` installs the CPU build of Torch 2.15. On the GPU machine, after `uv sync` and before `uv run film-sfp`, install the CUDA 13.2 wheel that matches this Torch release:
+
+```bash
+uv pip install --reinstall torch==2.15.0 --index-url https://download.pytorch.org/whl/cu132
+```
+
+Do not run `uv sync` again before the job, or it will put the CPU wheel back. The driver has to support CUDA 13.2. Torch 2.15 does not publish a cu128 wheel. The log line `sfp stage=device selected=` records which device the run actually used.
+
+The schedule is 20 epochs, Adam, learning rate 0.001, betas 0.9 and 0.999, weight decay 0, seed 0. Experiment 02 draws one 256² crop from each of the 50 training images per epoch and groups them in batches of 4. The last batch has the remaining 2 images. Experiment 01 has only view A, so each epoch draws 4 crops of that one frame and the batch stays 4. A single crop would make BatchNorm see a batch of 1. Every crop is placed so that it contains a film pixel. Inputs are standardized by the mean and NumPy standard deviation (divide by N) of the training film pixels. Evaluation runs the network in eval mode on the full 512² frame, so BatchNorm uses its running statistics.
+
+### 01_cornell_film
+
+`outputs/film/sfp/01_cornell_film/view_a/` and `view_b/`. This is the stress scene: colored walls, the filmed ball, and the copper mesh in the picture. Training uses view A's film pixels. View B is not an input to the optimizer. The meshes are built in Python from `configs/film/scene.yaml` and `assets/dragon/dragon_vrip_res4.ply`, then written under the output directory. Blender is not required, and the exported OBJs are not part of the git checkout.
+
+### 02_heldout_shapes
+
+`outputs/film/sfp/02_heldout_shapes/train/001_sphere/` through `050_bumpy/`, and `test/001_ellipsoid/` through `010_cone/`. The room is gray. One object is in each frame, and the camera looks at that object. Seeds are disjoint. The test split has no spheres. A render raises if the film covers less than 0.15 of that 512² frame. The Cornell views are not mixed into this experiment.
+
+The 50 training shapes are 4 spheres, 8 ellipsoids, 8 rounded boxes, 6 capsules, 6 tori, 6 cylinders, 6 cones, and 6 bumpy ellipsoids. The 10 test shapes are 2 ellipsoids, 2 rounded boxes, 2 bumpy ellipsoids, and one each of capsule, torus, cylinder, and cone. Each instance has its own seed, a bounding radius from 3 cm to 8 cm, a yaw about Z, and a floor position in the middle of the room. The film is a closed dielectric shell, IOR 1.5, roughness 0, offset 20 µm along the mesh normals. The solid inside is diffuse and sits 10 µm inside the base surface. Cylinder and cone rims are fillets, and the cone tip is round, so the offset shell stays closed. The rounded-box exponent stays below 3 and the bumpy wave goes to zero at the poles, so the chord sagitta stays under the 20 µm thickness. The torus tube is thick enough that a side view can cover 0.15 of the frame. `test_contact.png` in the experiment directory is the ten test RGBs beside their Stokes error maps.
+
+Every render folder gets `rgb.png`, `normal_gt.png`, `dolp.png`, `aolp.png`, and `s3.png`. After training it also gets `normal_stokes.png`, `error_stokes.png`, and the same pair for the analyzer network, the RGB network, and the specular Fresnel baseline.
+
+SfPUEL's archives were not downloaded. The training zip is about 20,000 Mitsuba 2 environment-map renders of bare objects, including metal, with no polyethylene film. The test archive stores four polarizer PNGs as relative 8-bit or 16-bit intensities, with no linear Stokes vector and no S3, and it scores an object mask. Those images are not a filmed-gripper test. The angle columns use their cutoffs so a later table can be read beside theirs. The pixels and the lighting remain ours.
+
