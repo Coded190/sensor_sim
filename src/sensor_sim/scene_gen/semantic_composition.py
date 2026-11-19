@@ -57,11 +57,11 @@ ROOM_RUNS = {
 }
 VERSION = "1.0.0"
 PACKAGE_VERSIONS = {
-    "furniture_workbench": "1.0.1",
+    "furniture_workbench": "1.0.2",
     "furniture_counter": "1.0.1",
 }
 VERSION_REASONS = {
-    "furniture_workbench": "small_parts allows material; the wire spool is a material in that zone. The 1.0.0 mesh is unchanged.",
+    "furniture_workbench": "zones resized so a workpiece, fixture, and stock plate fit, and the right column stays open. The 1.0.0 mesh is unchanged.",
     "furniture_counter": "storage allows manipulation_target; the pot sits in that zone. The 1.0.0 mesh is unchanged.",
 }
 
@@ -76,9 +76,10 @@ CEILING_RADIANCE = 2.2
 WINDOW_RADIANCE = 5.0
 MIN_SEPARATION_M = 0.004
 YAW_SPREAD = {"low": 0.08, "moderate": 0.30, "high": 0.55}
-FIXED_YAW = {"prop_hammer__1", "prop_pliers__2"}
+FIXED_YAW = {"prop_hammer__1", "prop_pliers__2", "prop_work_panel__1", "prop_fixture_block__1", "prop_stock_plate__1"}
 LAY_ON_SIDE = {"prop_screwdriver", "prop_pen", "prop_spatula"}
 LOW_IDS = (
+    "prop_work_panel__1",
     "prop_screwdriver__1",
     "prop_pliers__1",
     "prop_wrench__1",
@@ -88,25 +89,28 @@ LOW_IDS = (
     "prop_wood_offcut__1",
     "prop_metal_bracket__1",
 )
-MODERATE_IDS = LOW_IDS + ("prop_clamp__1", "prop_hex_key_group__1", "prop_cable__1", "prop_tape_roll__1")
-HIGH_IDS = MODERATE_IDS + ("prop_parts_bin__1", "prop_component_block__1", "prop_screwdriver__2", "prop_pliers__2")
+MODERATE_IDS = LOW_IDS + ("prop_fixture_block__1", "prop_clamp__1", "prop_hex_key_group__1", "prop_cable__1", "prop_tape_roll__1")
+HIGH_IDS = MODERATE_IDS + ("prop_stock_plate__1", "prop_parts_bin__1", "prop_component_block__1", "prop_screwdriver__2", "prop_pliers__2")
 SLOTS = {
-    "prop_screwdriver__1": ("assembly", (0.22, 0.18)),
-    "prop_hammer__1": ("assembly", (0.40, 0.24)),
-    "prop_pliers__2": ("assembly", (0.56, 0.24)),
-    "prop_pliers__1": ("tools", (0.86, 0.16)),
-    "prop_wrench__1": ("tools", (1.08, 0.16)),
-    "prop_clamp__1": ("tools", (0.88, 0.32)),
-    "prop_hex_key_group__1": ("tools", (1.10, 0.32)),
-    "prop_wood_offcut__1": ("staging", (0.18, 0.56)),
-    "prop_metal_bracket__1": ("staging", (0.55, 0.54)),
-    "prop_cable__1": ("staging", (0.40, 0.68)),
-    "prop_component_block__1": ("staging", (0.62, 0.66)),
-    "prop_fastener_tray__1": ("small_parts", (1.42, 0.16)),
-    "prop_wire_spool__1": ("small_parts", (1.62, 0.14)),
-    "prop_tape_roll__1": ("small_parts", (1.46, 0.30)),
-    "prop_parts_bin__1": ("small_parts", (1.64, 0.30)),
-    "prop_screwdriver__2": ("assembly", (0.24, 0.34)),
+    "prop_work_panel__1": ("assembly", (0.34, 0.22)),
+    "prop_wood_offcut__1": ("assembly", (0.20, 0.44)),
+    "prop_metal_bracket__1": ("assembly", (0.46, 0.44)),
+    "prop_cable__1": ("assembly", (0.62, 0.44)),
+    "prop_component_block__1": ("assembly", (0.66, 0.28)),
+    "prop_screwdriver__1": ("tools", (0.90, 0.12)),
+    "prop_pliers__1": ("tools", (1.14, 0.12)),
+    "prop_wrench__1": ("tools", (1.22, 0.30)),
+    "prop_hammer__1": ("tools", (0.82, 0.30)),
+    "prop_clamp__1": ("tools", (1.00, 0.30)),
+    "prop_hex_key_group__1": ("tools", (1.16, 0.22)),
+    "prop_fixture_block__1": ("staging", (0.22, 0.64)),
+    "prop_stock_plate__1": ("staging", (0.56, 0.64)),
+    "prop_fastener_tray__1": ("small_parts", (0.94, 0.68)),
+    "prop_wire_spool__1": ("small_parts", (1.16, 0.68)),
+    "prop_tape_roll__1": ("tools", (1.30, 0.16)),
+    "prop_parts_bin__1": ("small_parts", (1.28, 0.68)),
+    "prop_screwdriver__2": ("small_parts", (0.98, 0.52)),
+    "prop_pliers__2": ("small_parts", (1.24, 0.52)),
 }
 EXISTING_ROLES = {
     "prop_plate": "manipulation_target",
@@ -287,10 +291,14 @@ def render_scene(bundle_dir: Path, semantic_catalog: Path, room_catalog: Path, a
     instances = _render_instances(bundle, semantic_catalog, room_catalog, asset_catalog)
     images = {}
     visibility = {}
-    for name, camera, resolution in (
+    views = [
         ("room", bundle["cameras"]["overview"], (512, 384)),
         ("tabletop", bundle["cameras"]["close"], (1600, 900)),
-    ):
+    ]
+    for extra, resolution in (("grouping", (800, 450)), ("workspace", (800, 450))):
+        if extra in bundle["cameras"]:
+            views.append((extra, bundle["cameras"][extra], resolution))
+    for name, camera, resolution in views:
         scene = _scene(instances, camera, resolution, _ceiling_emitter(bundle))
         for emitter in _daylight_emitters(bundle):
             scene[emitter["id"]] = emitter["mitsuba"]
@@ -379,7 +387,7 @@ def _gallery_scene(path: Path, bundle: dict, review_path: Path) -> list[str]:
     for name, image in validation["images"].items():
         href = Path(os.path.relpath(image["png"], review_path.parent)).as_posix()
         exr = Path(os.path.relpath(image["exr"], review_path.parent)).as_posix()
-        label = "room" if name == "room" else "work surface"
+        label = {"room": "room overview", "tabletop": "work surface", "grouping": "object grouping", "workspace": "usable workspace"}.get(name, name)
         parts.append(f"<figure><a href=\"{html.escape(href)}\"><img src=\"{html.escape(href)}\" alt=\"{html.escape(label)}\"></a><figcaption>{html.escape(label)} RGB</figcaption></figure>")
         parts.append(f"<p><a href=\"{html.escape(exr)}\">Stokes EXR {html.escape(label)}</a></p>")
     mask = path.parent / "render_ceiling_v1" / "instance_ids.npy"
@@ -744,7 +752,8 @@ def _clutter(objects, support_body, level: str) -> dict:
     area = float((x1 - x0) * (y1 - y0))
     union = float(grid.sum() * resolution * resolution)
     yaws = [float(item["yaw"]) for item in objects]
-    free = _free_rectangle(grid, resolution)
+    free = _largest_free_rectangle(grid, resolution, x0, y0)
+    usable = _largest_free_rectangle(grid, resolution, x0, y0, min_side_m=0.20)
     counts = _counts(objects)
     footprints = []
     for local in local_vertices:
@@ -764,11 +773,13 @@ def _clutter(objects, support_body, level: str) -> dict:
         "yaw_std_rad": float(np.std(yaws)) if yaws else 0.0,
         "repeated_assets": sorted(asset for asset, count in counts.items() if count > 1),
         "repeat_count": int(sum(count - 1 for count in counts.values() if count > 1)),
-        "free_rectangle_m": free,
+        "largest_free_rectangle": free,
+        "usable_free_rectangle": usable,
+        "free_rectangle_m": usable["size_m"],
         "nearest_clearance_m": _nearest(objects),
         "union_definition": "4 mm XY raster of support-frame triangles divided by the support polygon area",
         "footprint_definition": "sum of per-object XY axis-aligned bounding boxes in the support frame",
-        "free_rectangle_definition": "1 when a 0.25 m by 0.25 m empty window exists on the 4 mm raster, else 0",
+        "free_rectangle_definition": "largest empty axis-aligned rectangle on the 4 mm raster, origin and size in the support frame",
     }
 
 
@@ -789,18 +800,42 @@ def _nearest(objects) -> float:
     return best
 
 
-def _free_rectangle(grid: np.ndarray, resolution: float) -> list[float]:
-    cells_x = int(np.ceil(0.25 / resolution))
-    cells_y = int(np.ceil(0.25 / resolution))
-    occupied = np.pad(grid.astype(np.int32), ((1, 0), (1, 0)))
-    integral = occupied.cumsum(axis=0).cumsum(axis=1)
+def _largest_free_rectangle(grid: np.ndarray, resolution: float, x0: float, y0: float, min_side_m: float = 0.0) -> dict:
+    """Largest empty axis-aligned rectangle on the occupancy raster.
+
+    ``min_side_m`` keeps only rectangles whose shorter side is at least that
+    long, so a thin empty margin is not reported as the usable workspace.
+    """
     height, width = grid.shape
-    for y_value in range(0, height - cells_y + 1, 2):
-        for x_value in range(0, width - cells_x + 1, 2):
-            total = integral[y_value + cells_y, x_value + cells_x] - integral[y_value, x_value + cells_x] - integral[y_value + cells_y, x_value] + integral[y_value, x_value]
-            if int(total) == 0:
-                return [0.25, 0.25]
-    return [0.0, 0.0]
+    min_cells = int(np.ceil(min_side_m / resolution)) if min_side_m else 0
+    histogram = np.zeros(width, dtype=np.int32)
+    best = (0, 0, 0, 0, 0)
+    for row in range(height):
+        histogram = np.where(grid[row], 0, histogram + 1)
+        area, left, rect_width, rect_height = _histogram_rectangle(histogram, min_cells)
+        if area > best[0]:
+            best = (area, left, row - rect_height + 1, rect_width, rect_height)
+    _area, left, top, rect_width, rect_height = best
+    return {
+        "origin_m": [float(x0 + left * resolution), float(y0 + top * resolution)],
+        "size_m": [float(rect_width * resolution), float(rect_height * resolution)],
+        "area_m2": float(rect_width * rect_height * resolution * resolution),
+    }
+
+
+def _histogram_rectangle(histogram: np.ndarray, min_cells: int = 0) -> tuple[int, int, int, int]:
+    stack = [-1]
+    best = (0, 0, 0, 0)
+    values = list(histogram) + [0]
+    for index, height in enumerate(values):
+        while stack[-1] != -1 and values[stack[-1]] >= height:
+            bar = values[stack.pop()]
+            left = stack[-1] + 1
+            width = index - left
+            if bar >= min_cells and width >= min_cells and bar * width > best[0]:
+                best = (bar * width, left, width, bar)
+        stack.append(index)
+    return best
 
 
 def _freeze_bands(reports) -> dict:
@@ -900,6 +935,25 @@ def _overview_camera(support_world: np.ndarray, spec: dict) -> dict:
         _outside, peak, _distance, origin, target = choices[0]
         logger.info("semantic_composition event=overview_retarget peak_ndc=%.4f origin=%s", peak, origin)
     return {"name": "room_overview", "origin": list(origin), "target": list(target), "up": up, "fov_deg": fov, "resolution": [512, 384], "peak_ndc": peak}
+
+
+def _zone_world(support: dict, zone_id: str) -> np.ndarray:
+    zone = next(item for item in support["zones"] if item["id"] == zone_id)
+    x0, y0, x1, y1 = zone["rectangle_m"]
+    z_value = float(support["support_z"])
+    local = np.array([[x0, y0, z_value], [x1, y0, z_value], [x1, y1, z_value], [x0, y1, z_value]], dtype=np.float64)
+    return apply_points(support["matrix"], local)
+
+
+def _rect_world(support: dict, origin: list[float], size: list[float]) -> np.ndarray:
+    x0, y0 = origin
+    width, height = size
+    z_value = float(support["support_z"])
+    local = np.array(
+        [[x0, y0, z_value], [x0 + width, y0, z_value], [x0 + width, y0 + height, z_value], [x0, y0 + height, z_value]],
+        dtype=np.float64,
+    )
+    return apply_points(support["matrix"], local)
 
 
 def frame_support_camera(support_world: np.ndarray, spec: dict) -> dict:
@@ -1073,6 +1127,13 @@ def _bundle(placed, packages, asset_catalog: Path) -> dict:
     support_world = apply_points(support["matrix"], support["support_polygon"])
     close = frame_support_camera(support_world, spec)
     overview = _overview_camera(support_world, spec)
+    primary_zone = {"workbench": "assembly", "kitchen": "preparation", "dining": "serving", "desk": "main_work"}[recipe["scene_type"]]
+    grouping = frame_support_camera(_zone_world(support, primary_zone), spec)
+    if recipe["scene_type"] == "workbench":
+        workspace = frame_support_camera(_zone_world(support, "free_workspace"), spec)
+    else:
+        usable = placed["clutter"]["usable_free_rectangle"]
+        workspace = frame_support_camera(_rect_world(support, usable["origin_m"], usable["size_m"]), spec) if usable["area_m2"] > 0 else close
     level = recipe["clutter_level"]
     bundle = {
         "schema_version": "semantic_bundle_v1",
@@ -1089,7 +1150,7 @@ def _bundle(placed, packages, asset_catalog: Path) -> dict:
         "object_instances": object_instances,
         "relations": relations,
         "clutter": placed["clutter"],
-        "cameras": {"overview": overview, "close": close},
+        "cameras": {"overview": overview, "close": close, "grouping": grouping, "workspace": workspace},
         "lighting": _room_lighting(spec),
         "renderer": {"variant": "cuda_ad_spectral_polarized", "spp": SCENE_SPP, "seed": RENDER_SEED},
         "room_clearance": placed["room_clearance"],

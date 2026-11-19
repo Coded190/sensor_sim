@@ -15,6 +15,7 @@ from sensor_sim.scene_gen.indoor_transform import apply_points, deserialize_matr
 from sensor_sim.scene_gen.mesh_io import write_obj
 from sensor_sim.scene_gen.metric_audit import CHANNEL_NAMES
 from sensor_sim.scene_gen.semantic_assets import BUILDERS, build_asset, interior_is_open
+from sensor_sim.scene_gen.semantic_quality import assess
 from sensor_sim.scene_gen.semantic_composition import (
     ROOT,
     VERSION,
@@ -113,6 +114,9 @@ def test_packages_are_closed_recognized_and_use_four_bsdfs():
         assert old == new
         verify_package(CATALOG / asset_id / "1.0.0")
         assert verify_package(CATALOG / asset_id / "1.0.1")["provenance"]["parameters"]["revision_reason"]
+    assert (CATALOG / "furniture_workbench" / "1.0.2" / "geometry" / "render.obj").read_bytes() == (
+        CATALOG / "furniture_workbench" / "1.0.1" / "geometry" / "render.obj"
+    ).read_bytes()
 
 
 def test_workbench_shelf_does_not_interpenetrate_the_legs():
@@ -148,10 +152,11 @@ def test_recipes_keep_one_zone_unique_ids_and_the_clutter_order():
     bundles = {bundle["task_id"]: bundle for _path, bundle in _bundles()}
     assert set(bundles) == {"kitchen", "dining", "desk", "workbench_low", "workbench_moderate", "workbench_high"}
     fractions = []
-    for task_id, expected in (("workbench_low", 8), ("workbench_moderate", 12), ("workbench_high", 16)):
+    bands = {"workbench_low": (0.10, 0.15), "workbench_moderate": (0.15, 0.22), "workbench_high": (0.22, 0.30)}
+    for task_id, _expected in (("workbench_low", 9), ("workbench_moderate", 14), ("workbench_high", 19)):
         bundle = bundles[task_id]
         clutter = bundle["clutter"]
-        assert clutter["instance_count"] == expected
+        assert clutter["instance_count"] == _expected
         assert bundle["renderer"]["variant"] == "cuda_ad_spectral_polarized"
         assert bundle["renderer"]["seed"] == 17421
         fractions.append(clutter["union_fraction"])
@@ -176,8 +181,11 @@ def test_recipes_keep_one_zone_unique_ids_and_the_clutter_order():
             assert relation["measured_m"] <= 0.001
         assert clutter["nearest_clearance_m"] >= 0.004
     assert fractions[0] < fractions[1] < fractions[2]
+    for task_id, band in bands.items():
+        assert band[0] <= bundles[task_id]["clutter"]["union_fraction"] <= band[1]
     high = bundles["workbench_high"]["clutter"]
-    assert high["free_rectangle_m"] == [0.25, 0.25]
+    assert min(high["usable_free_rectangle"]["size_m"]) >= 0.25
+    assert high["usable_free_rectangle"]["origin_m"][0] > 1.2
     assert "prop_screwdriver" in high["repeated_assets"]
     assert "prop_pliers" in high["repeated_assets"]
     low_camera = bundles["workbench_low"]["cameras"]
@@ -265,7 +273,7 @@ def test_renders_match_the_exr_contract_and_the_gallery_links(tmp_path: Path):
 
     require_variant()
     exrs = sorted(ROOT.glob("*/*/render_ceiling_v1/*.exr"))
-    assert len(exrs) == 12
+    assert len(exrs) == 24
     for path in exrs:
         bitmap = mi.Bitmap(str(path))
         image = np.array(bitmap)
@@ -321,3 +329,15 @@ def test_previous_datasets_and_protected_modules_are_unchanged():
     for name in ("run_manifest.json", "audit.json", "production_config.yaml"):
         assert _sha(root / name) == DATASET_V1[name]
     assert VERSION == "1.0.0"
+
+
+def test_quality_check_separates_hard_failures_from_warnings():
+    bundles = {bundle["task_id"]: (path, bundle) for path, bundle in _bundles()}
+    for task_id, (path, bundle) in bundles.items():
+        report = assess(bundle, CATALOG, Path("dataset/qualification/room_diversity/catalog"), ASSET_CATALOG, path / "render_ceiling_v1")
+        assert report["passed"], report["hard_failures"]
+    broken = json.loads(json.dumps(bundles["workbench_high"][1]))
+    broken["object_instances"][0]["matrix"] = [float("nan")] * 16
+    report = assess(broken, CATALOG, Path("dataset/qualification/room_diversity/catalog"), ASSET_CATALOG)
+    assert not report["passed"]
+    assert any(item["name"].startswith("transform:") for item in report["hard_failures"])

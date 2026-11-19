@@ -72,12 +72,13 @@ def _workbench() -> dict:
 
 
 def _bench_zones(length: float, depth: float) -> list[dict]:
+    """Leave a clear column on the right. The left and middle hold the workpiece and tools."""
     return [
-        _zone("assembly", 0.05, 0.05, 0.70, 0.42, "main work area", ["tool", "manipulation_target", "material"]),
-        _zone("tools", 0.74, 0.05, 1.24, 0.42, "hand tools", ["tool"]),
-        _zone("staging", 0.05, 0.46, 0.70, 0.75, "material staging", ["material", "tool"]),
-        _zone("small_parts", 1.28, 0.05, 1.75, 0.40, "trays and small parts", ["container", "tool", "context", "material"]),
-        _zone("free_workspace", 1.28, 0.46, 1.75, 0.75, "unoccupied work area", []),
+        _zone("assembly", 0.04, 0.04, 0.72, 0.50, "workpiece and the material beside it", ["tool", "manipulation_target", "material"]),
+        _zone("tools", 0.76, 0.04, 1.36, 0.42, "hand tools", ["tool"]),
+        _zone("staging", 0.04, 0.52, 0.78, 0.76, "stock and fixtures", ["material", "tool"]),
+        _zone("small_parts", 0.82, 0.46, 1.36, 0.76, "trays, offcuts, and small tools", ["container", "tool", "context", "material"]),
+        _zone("free_workspace", 1.40, 0.04, 1.76, 0.76, "open working area", []),
     ]
 
 
@@ -279,6 +280,28 @@ def _tray() -> dict:
     return built
 
 
+def _work_panel() -> dict:
+    return _tool(
+        "prop_work_panel",
+        [_box("panel", [0.0, 0.0, 0.0], [0.52, 0.30, 0.018])],
+        "manipulation_target",
+        {"type": "diffuse", "reflectance": [0.62, 0.45, 0.28], "research_role": "depolarizing_reference"},
+    )
+
+
+def _fixture_block() -> dict:
+    return _tool(
+        "prop_fixture_block",
+        [_box("fixture", [0.0, 0.0, 0.0], [0.28, 0.14, 0.040])],
+        "material",
+        {"type": "diffuse", "reflectance": [0.55, 0.42, 0.30], "research_role": "depolarizing_reference"},
+    )
+
+
+def _stock_plate() -> dict:
+    return _tool("prop_stock_plate", [_box("plate", [0.0, 0.0, 0.0], [0.34, 0.16, 0.008])], "material", _metal())
+
+
 def _offcut() -> dict:
     return _tool("prop_wood_offcut", [_box("plank", [0.0, 0.0, 0.0], [0.22, 0.08, 0.02])], "material", {"type": "diffuse", "reflectance": [0.62, 0.45, 0.28], "research_role": "depolarizing_reference"})
 
@@ -380,6 +403,9 @@ BUILDERS = {
     "prop_serving_dish": _dish,
     "prop_fork": _fork,
     "prop_fastener_tray": _tray,
+    "prop_work_panel": _work_panel,
+    "prop_fixture_block": _fixture_block,
+    "prop_stock_plate": _stock_plate,
     "prop_wood_offcut": _offcut,
     "prop_parts_bin": _bin,
     "prop_component_block": _block,
