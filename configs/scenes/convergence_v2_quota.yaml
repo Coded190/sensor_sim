@@ -1,0 +1,31 @@
+# Qualification batch only. This is not the Dataset v1 generation contract.
+mode: random
+seed: 17
+num_objects: [1, 2]
+assets: [sphere, capsule]
+materials: [dielectric, pplastic, conductor, roughconductor]
+include_nonpolarizing: false
+allow_unprofiled: false
+profile_file: configs/scenes/material_profiles.json
+resolution: [128, 128]
+spp: 256
+gap: 0.005
+camera:
+  position: [0.0, -0.55, 0.32]
+  target: [0.0, 0.0, 0.18]
+  up: [0.0, 0.0, 1.0]
+  fov_deg: 55.0
+  near_clip: 0.01
+  far_clip: 100.0
+light:
+  position: [0.0, -0.02, 0.598]
+  target: [0.0, 0.0, 0.051]
+  up: [0.0, 1.0, 0.0]
+  size: [0.15, 0.15]
+  radiance: 18.0
+strata:
+  - {family: sphere, material: dielectric, count_objects: 1, count: 1}
+  - {family: sphere, material: dielectric, count_objects: 2, count: 1}
+  - {family: capsule, material: conductor, count_objects: 1, count: 1}
+  - {family: capsule, material: pplastic, count_objects: 2, count: 1}
+  - {family: sphere, material: roughconductor, count_objects: 1, count: 1}

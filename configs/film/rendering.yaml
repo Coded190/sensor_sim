@@ -1,5 +1,5 @@
-variant: llvm_ad_spectral_polarized
-mono_variant: llvm_ad_mono_polarized
+variant: cuda_ad_spectral_polarized
+mono_variant: cuda_ad_mono_polarized
 integrator: path
 max_depth: 8
 spp: 64

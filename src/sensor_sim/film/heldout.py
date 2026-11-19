@@ -3,13 +3,11 @@
 Experiment 01 retrains the Cornell film and leaves the copper mesh out of
 the loss, the error images, and the summary. Experiment 02 trains on 50
 generated shapes and scores 10 held-out shapes. Neither SfPUEL archive is
-downloaded. This module does not import the mask trainer, so it does not
-clear ``CUDA_VISIBLE_DEVICES``.
+downloaded. The device is chosen after the Dr.Jit and Torch caches are flushed.
 """
 
 from __future__ import annotations
 
-import gc
 import json
 import logging
 import sys
@@ -51,9 +49,10 @@ from sensor_sim.film.sfp_math import (
     angular_error_summary,
     aolp_pair,
     camera_matrix,
-    choose_device,
     fresnel_normals,
     mean_abs_s3_over_s0,
+    release_render_caches,
+    select_torch_device,
     view_directions,
     world_normals_to_camera,
 )
@@ -224,56 +223,79 @@ def _write_render_pngs(out_dir: Path, measurement: dict, film_mask: np.ndarray, 
         raise RuntimeError(f"{out_dir} is missing {missing}")
 
 
-def _release_render_memory() -> None:
-    """Drop Mitsuba's cached device buffers before Torch asks how much GPU memory is free."""
-    gc.collect()
-    try:
-        import drjit as dr
+def _widest_normal_parameter_count() -> int:
+    """Stokes U-Net width. It has more input channels than the analyzer and RGB nets."""
+    from sensor_sim.film.unet import FilmUNet, parameter_count
 
-        flush = getattr(dr, "flush_malloc_cache", None)
-        if flush is not None:
-            flush()
-        sync = getattr(dr, "sync_thread", None)
-        if sync is not None:
-            sync()
-        logger.info("sfp stage=release_gpu drjit_cache=flushed")
-    except Exception as exc:
-        logger.info("sfp stage=release_gpu status=skipped error=%s", type(exc).__name__)
+    model = FilmUNet(9, out_channels=3)
+    count = parameter_count(model)
+    del model
+    return count
 
 
 def select_device() -> tuple[str, str, dict]:
-    """Import Torch after the renders. Do not hide CUDA when the GPU is free."""
-    _release_render_memory()
-    import torch
-
-    available = bool(torch.cuda.is_available())
-    free = None
-    total = None
-    if available:
-        free, total = torch.cuda.mem_get_info()
-        free, total = int(free), int(total)
-        logger.info("sfp stage=device cuda_free_bytes=%d cuda_total_bytes=%d", free, total)
-    device, reason = choose_device(available, free)
-    if not available:
-        logger.info(
-            "sfp stage=device hint=uv pip install --reinstall torch==2.15.0 "
-            "--index-url https://download.pytorch.org/whl/cu132"
-        )
+    """Flush Dr.Jit and Torch, then use CUDA unless the batch floor is not free."""
+    device, reason, info = select_torch_device(_widest_normal_parameter_count())
+    logger.info(
+        "sfp stage=release_gpu %s",
+        info["release"],
+    )
+    logger.info(
+        "sfp stage=device cuda_free_bytes=%s cuda_total_bytes=%s batch_floor_bytes=%d n_parameters=%d",
+        info["free_bytes"],
+        info["total_bytes"],
+        info["batch_floor_bytes"],
+        info["n_parameters"],
+    )
     logger.info(
         "sfp stage=device selected=%s reason=%s torch=%s",
         device,
         reason,
-        torch.__version__,
+        info["torch_version"],
     )
-    info = {
-        "selected": device,
-        "reason": reason,
-        "torch_version": torch.__version__,
-        "cuda_available": available,
-        "free_bytes": free,
-        "total_bytes": total,
-    }
     return device, reason, info
+
+
+def _set_cuda_variant() -> str:
+    """Select the polarized CUDA variant. There is no CPU fallback."""
+    import mitsuba as mi
+
+    mi.set_variant(VARIANT)
+    active = mi.variant()
+    if active != VARIANT:
+        raise RuntimeError(f"render variant {active} is not {VARIANT}")
+    return active
+
+
+def _require_cuda_variant() -> None:
+    """Log the variant once at startup. Later frames use the same setting."""
+    logger.info("sfp stage=render variant=%s", _set_cuda_variant())
+
+
+def _film_aov(build, probe_point: list[float]) -> dict:
+    """One-sample shape index and shading normals. This runs before the Stokes render."""
+    _set_cuda_variant()
+    aov_scene = build(polarized=False, spp=1, rfilter="box")
+    aov_scene["integrator"] = {"type": "aov", "aovs": "nn:sh_normal,idx:shape_index"}
+    aov_loaded, _aov_image, aov_array, _aov_elapsed = _render(aov_scene, spp=1, seed=SEED)
+    world_normals, shape_index = _split_aov(aov_loaded, aov_array)
+    aov_sensor = aov_loaded.sensors()[0]
+    normals = world_normals_to_camera(world_normals, camera_matrix(aov_sensor))
+    film_index, row, column = _index_at(aov_sensor, shape_index, probe_point)
+    del aov_loaded, aov_array, aov_sensor
+    index = np.rint(shape_index).astype(np.int64)
+    film_pixels = int((index == film_index).sum())
+    fraction = film_pixels / float(shape_index.size)
+    release_render_caches()
+    return {
+        "normals": normals,
+        "shape_index": shape_index,
+        "film_index": film_index,
+        "row": row,
+        "column": column,
+        "film_pixels": film_pixels,
+        "fraction": fraction,
+    }
 
 
 def render_film_view(
@@ -285,11 +307,26 @@ def render_film_view(
     probe_point: list[float],
     require_fraction: bool,
 ) -> dict:
-    """Stokes plus shading normals. The scored surface is the film shell only."""
-    import mitsuba as mi
-
+    """Stokes plus shading normals. The film-pixel gate runs before the 64-sample render."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    logger.info("sfp experiment=%s view=%s stage=normals", experiment, view_name)
+    aov = _film_aov(build, probe_point)
+    film_index = aov["film_index"]
+    row = aov["row"]
+    column = aov["column"]
+    film_pixels = aov["film_pixels"]
+    fraction = aov["fraction"]
+    shape_index = aov["shape_index"]
+    normals = aov["normals"]
+    if film_index == 0:
+        raise RuntimeError(f"{experiment} {view_name} film probe missed every surface")
+    if require_fraction and fraction < MIN_FILM_FRACTION:
+        raise RuntimeError(
+            f"{experiment} {view_name} film covers {fraction:.4f} of the frame, below {MIN_FILM_FRACTION}"
+        )
+    if film_pixels < 100:
+        raise RuntimeError(f"{experiment} {view_name} has only {film_pixels} film pixels")
     logger.info(
         "sfp experiment=%s view=%s stage=stokes variant=%s spp=%d seed=%d depth=%d",
         experiment,
@@ -299,27 +336,14 @@ def render_film_view(
         SEED,
         MAX_DEPTH,
     )
-    mi.set_variant(VARIANT)
     loaded, image, _array, elapsed = _render(build(polarized=True, spp=SPP, rfilter="gaussian"), SPP, SEED)
     bundle = _stokes_from_image(loaded, image)
     height, width = bundle["s0"].shape
     view = view_directions(loaded.sensors()[0], width, height)
-    logger.info("sfp experiment=%s view=%s stage=normals", experiment, view_name)
-    aov_scene = build(polarized=False, spp=1, rfilter="box")
-    aov_scene["integrator"] = {"type": "aov", "aovs": "nn:sh_normal,idx:shape_index"}
-    aov_loaded, _aov_image, aov_array, _aov_elapsed = _render(aov_scene, spp=1, seed=SEED)
-    world_normals, shape_index = _split_aov(aov_loaded, aov_array)
-    aov_sensor = aov_loaded.sensors()[0]
-    normals = world_normals_to_camera(world_normals, camera_matrix(aov_sensor))
-    film_index, row, column = _index_at(aov_sensor, shape_index, probe_point)
-    del loaded, image, aov_loaded, aov_array, aov_sensor
-    if film_index == 0:
-        raise RuntimeError(f"{experiment} {view_name} film probe missed every surface")
+    del loaded, image
+    release_render_caches()
     measurement = pack_measurement(bundle, normals, shape_index, view)
-    index = np.rint(shape_index).astype(np.int64)
-    film_pixels = int((index == film_index).sum())
-    fraction = film_pixels / float(shape_index.size)
-    film_mask = index == film_index
+    film_mask = np.rint(shape_index).astype(np.int64) == film_index
     s3_ratio = mean_abs_s3_over_s0(measurement["s3"], measurement["s0"], film_mask)
     logger.info(
         "sfp experiment=%s view=%s stage=render status=ok film_index=%d film_pixels=%d "
@@ -332,12 +356,6 @@ def render_film_view(
         s3_ratio,
         elapsed,
     )
-    if require_fraction and fraction < MIN_FILM_FRACTION:
-        raise RuntimeError(
-            f"{experiment} {view_name} film covers {fraction:.4f} of the frame, below {MIN_FILM_FRACTION}"
-        )
-    if film_pixels < 100:
-        raise RuntimeError(f"{experiment} {view_name} has only {film_pixels} film pixels")
     np.savez_compressed(out_dir / "measurement.npz", **measurement)
     _write_render_pngs(out_dir, measurement, film_mask, s3_ratio)
     record = {
@@ -444,7 +462,14 @@ def score_film_fresnel(experiment: str, record: dict) -> dict:
     return {"fresnel_specular": specular, "fresnel_oracle": oracle}
 
 
-def _fit_model(train_records: list[dict], eval_records: list[dict], model_name: str, device: str, crops_per_image: int):
+def _fit_model(
+    train_records: list[dict],
+    eval_records: list[dict],
+    model_name: str,
+    device: str,
+    crops_per_image: int,
+    checkpoint_path: Path | None = None,
+):
     """One U-Net. Standardization uses training film pixels only."""
     import torch
 
@@ -473,6 +498,15 @@ def _fit_model(train_records: list[dict], eval_records: list[dict], model_name: 
     if device == "cuda":
         torch.cuda.manual_seed_all(SEED)
     model = FilmUNet(in_channels, out_channels=3).to(device)
+    param_device = next(model.parameters()).device
+    logger.info(
+        "sfp stage=train model=%s param_device=%s requested=%s",
+        model_name,
+        param_device,
+        device,
+    )
+    if param_device.type != device:
+        raise RuntimeError(f"{model_name} parameters are on {param_device}, requested {device}")
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, betas=(0.9, 0.999), weight_decay=0.0)
     sources = [torch.tensor(np.transpose(image, (2, 0, 1)), dtype=torch.float32) for image in train_std]
     truths = [torch.tensor(record["measurement"]["normal"], dtype=torch.float32) for record in train_records]
@@ -557,7 +591,23 @@ def _fit_model(train_records: list[dict], eval_records: list[dict], model_name: 
         "weight_decay": 0.0,
         "seed": SEED,
         "device": device,
+        "param_device": str(param_device),
     }
+    if checkpoint_path is not None:
+        path = Path(checkpoint_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save(
+            {
+                "state_dict": model.state_dict(),
+                "mean": mean,
+                "std": scale,
+                "in_channels": in_channels,
+                "model_name": model_name,
+                "info": info,
+            },
+            path,
+        )
+        logger.info("sfp stage=checkpoint path=%s", path)
     del model, sources, truths
     if device == "cuda":
         torch.cuda.empty_cache()
@@ -729,13 +779,14 @@ def run_cornell() -> dict:
     return summary
 
 
-def run_shapes() -> dict:
+def _shape_jobs() -> list[dict]:
+    """Write the gray room and every filmed mesh. No Stokes render yet."""
     catalog = shape_catalog(SEED)
     root = OUTPUT / EXPERIMENT_02
     room_dir = root / "room"
     logger.info("sfp experiment=%s stage=room dir=%s", EXPERIMENT_02, room_dir)
     write_gray_room(room_dir)
-    records = []
+    jobs = []
     for spec in catalog:
         out_dir = root / spec["split"] / spec["folder"]
         built = build_shape(spec)
@@ -769,12 +820,60 @@ def run_shapes() -> dict:
                 rfilter=rfilter,
             )
 
+        jobs.append(
+            {
+                "spec": spec,
+                "built": built,
+                "out_dir": out_dir,
+                "build": build,
+                "probe": [float(value) for value in built["probe"]],
+                "folder": spec["folder"],
+                "split": spec["split"],
+                "family": spec["family"],
+            }
+        )
+    return jobs
+
+
+def preflight_shape_coverage(jobs: list[dict] | None = None) -> list[dict]:
+    """1-sample film-pixel fraction for every shape, before any 64-sample Stokes frame."""
+    jobs = _shape_jobs() if jobs is None else jobs
+    for job in jobs:
+        aov = _film_aov(job["build"], job["probe"])
+        fraction = float(aov["fraction"])
+        logger.info(
+            "sfp stage=coverage folder=%s split=%s family=%s film_pixels=%d film_fraction=%.4f",
+            job["folder"],
+            job["split"],
+            job["family"],
+            int(aov["film_pixels"]),
+            fraction,
+        )
+        if aov["film_index"] == 0:
+            raise RuntimeError(f"{job['folder']} film probe missed every surface")
+        if fraction < MIN_FILM_FRACTION:
+            raise RuntimeError(
+                f"{job['folder']} film covers {fraction:.4f} of the frame, below {MIN_FILM_FRACTION}"
+            )
+        job["coverage_fraction"] = fraction
+    return jobs
+
+
+def run_shapes(jobs: list[dict] | None = None) -> dict:
+    root = OUTPUT / EXPERIMENT_02
+    if jobs is None:
+        jobs = preflight_shape_coverage()
+    records = []
+    for job in jobs:
+        spec = job["spec"]
+        built = job["built"]
+        out_dir = job["out_dir"]
         record = render_film_view(
             experiment=EXPERIMENT_02,
             view_name=spec["folder"],
             out_dir=out_dir,
-            build=build,
-            probe_point=[float(value) for value in built["probe"]],
+            build=job["build"],
+            probe_point=job["probe"],
             require_fraction=True,
         )
         record["split"] = spec["split"]
@@ -858,6 +957,7 @@ def main(argv: list[str] | None = None) -> None:
     if len(args) > 1 or (args and args[0] not in {"01", "02", "both"}):
         raise SystemExit("usage: film-sfp [01|02|both]")
     choice = args[0] if args else "both"
+    _require_cuda_variant()
     logger.info(
         "sfp stage=start choice=%s variant=%s resolution=%s spp=%d lamp=unpolarized_ceiling_rectangle",
         choice,
@@ -865,10 +965,11 @@ def main(argv: list[str] | None = None) -> None:
         list(RESOLUTION),
         SPP,
     )
+    jobs = preflight_shape_coverage() if choice in {"02", "both"} else None
     if choice in {"01", "both"}:
         run_cornell()
     if choice in {"02", "both"}:
-        run_shapes()
+        run_shapes(jobs)
     logger.info("sfp stage=done choice=%s", choice)
 
 

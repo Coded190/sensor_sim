@@ -12,4 +12,4 @@ dice_weight: 0.5
 dice_smooth: 1.0
 probability_threshold: 0.5
 pos_fraction_floor: 0.05
-device: cpu
+device: cuda

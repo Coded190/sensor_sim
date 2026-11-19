@@ -15,9 +15,11 @@ from sensor_sim.film.heldout import (
 )
 from sensor_sim.film.sfp import _channels
 from sensor_sim.film.sfp_math import (
-    MIN_FREE_BYTES,
+    ACTIVATION_ALLOWANCE_BYTES,
+    PARAMETER_STATE_BYTES,
     angle_fractions,
     angular_error_summary,
+    batch_floor_bytes,
     choose_device,
     mean_angular_error_deg,
 )
@@ -118,19 +120,21 @@ def test_s3_is_packed_and_is_not_a_network_input():
     assert _channels(packed, "rgb").shape[-1] == 6
 
 
-def test_device_uses_the_gpu_only_when_eight_gib_are_free():
-    device, reason = choose_device(False, None)
+def test_device_uses_the_gpu_when_the_batch_floor_is_free():
+    floor = batch_floor_bytes(1000)
+    assert floor == 1000 * PARAMETER_STATE_BYTES + ACTIVATION_ALLOWANCE_BYTES
+    device, reason = choose_device(False, None, floor)
     assert device == "cpu"
     assert "is false" in reason
-    device, reason = choose_device(True, None)
-    assert device == "cpu"
-    assert "could not be read" in reason
-    device, reason = choose_device(True, MIN_FREE_BYTES - 1)
-    assert device == "cpu"
-    assert "below" in reason
-    device, reason = choose_device(True, MIN_FREE_BYTES)
+    device, reason = choose_device(True, None, floor)
     assert device == "cuda"
-    assert "8 GiB" in reason
+    assert "could not be read" in reason
+    device, reason = choose_device(True, floor - 1, floor)
+    assert device == "cpu"
+    assert "below the batch floor" in reason
+    device, reason = choose_device(True, floor, floor)
+    assert device == "cuda"
+    assert "covers the batch floor" in reason
 
 
 def test_catalog_counts_seeds_and_folders():
@@ -176,6 +180,36 @@ def test_dragon_stands_on_the_floor_at_the_recorded_height():
     assert center_x == pytest.approx(DRAGON_CENTER_XY[0])
     assert center_y == pytest.approx(DRAGON_CENTER_XY[1])
     assert mesh["faces"].shape[1] == 3
+
+
+def test_degenerate_vertex_normal_is_unit_length(tmp_path):
+    from sensor_sim.film.geometry import write_obj
+
+    vertices = np.array(
+        [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [2.0, 0.0, 0.0], [2.0, 0.0, 0.0], [2.0, 0.0, 0.0]],
+        dtype=np.float64,
+    )
+    faces = np.array([[0, 1, 2], [3, 4, 5]], dtype=np.int64)
+    path = tmp_path / "degenerate.obj"
+    write_obj(path, vertices, faces, smooth=True)
+    normals = np.array(
+        [[float(value) for value in line.split()[1:]] for line in path.read_text().splitlines() if line.startswith("vn ")],
+        dtype=np.float64,
+    )
+    assert normals.shape[0] == 6
+    assert np.allclose(np.linalg.norm(normals, axis=1), 1.0)
+
+
+def test_dragon_obj_loads_in_mitsuba(tmp_path):
+    mitsuba = pytest.importorskip("mitsuba")
+    from sensor_sim.film.geometry import write_obj
+
+    mitsuba.set_variant("scalar_rgb")
+    root = Path(__file__).resolve().parents[1]
+    mesh = read_ascii_ply(root / "assets" / "dragon" / "dragon_vrip_res4.ply")
+    path = tmp_path / "dragon.obj"
+    write_obj(path, stand_dragon(mesh["vertices"]), mesh["faces"], smooth=True)
+    mitsuba.load_dict({"type": "scene", "dragon": {"type": "obj", "filename": str(path)}})
 
 
 def test_ndc_matches_mitsuba_and_the_lamp_does_not_follow_the_object():
@@ -250,17 +284,30 @@ def test_cornell_meshes_are_written_without_blender(tmp_path):
     assert "dragon" not in poses
 
 
-def test_cuda_stays_visible_for_the_normal_run_and_hidden_for_the_mask_run():
+def test_cuda_is_not_hidden_by_a_film_module():
     root = Path(__file__).resolve().parents[1] / "src" / "sensor_sim" / "film"
-    unet = (root / "unet.py").read_text()
-    trainer = (root / "train.py").read_text()
-    heldout = (root / "heldout.py").read_text()
     assignment = 'os.environ["CUDA_VISIBLE_DEVICES"]'
-    assert assignment not in unet
-    assert assignment not in heldout
-    assert "film.train" not in heldout
-    assert assignment in trainer
-    assert trainer.index(assignment) < trainer.index("import torch")
+    for name in ("unet.py", "heldout.py", "train.py", "sfp.py"):
+        text = (root / name).read_text()
+        assert assignment not in text, name
+    assert "film.train" not in (root / "heldout.py").read_text()
+
+
+def test_mask_parameters_follow_cuda_when_the_helper_selects_it():
+    import torch
+
+    from sensor_sim.film.unet import FilmUNet
+
+    floor = batch_floor_bytes(1_000_000)
+    free = None
+    if torch.cuda.is_available():
+        free, _total = torch.cuda.mem_get_info()
+        free = int(free)
+    device, _reason = choose_device(bool(torch.cuda.is_available()), free, floor)
+    if device != "cuda":
+        pytest.skip("the helper selected the CPU")
+    model = FilmUNet(7, out_channels=1).to(device)
+    assert next(model.parameters()).device.type == "cuda"
 
 
 def test_usage_rejects_an_unknown_experiment():

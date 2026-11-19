@@ -1,22 +1,17 @@
-"""Train Model A (RGB) and Model B (RGB + four analyzers) on the CPU.
+"""Train Model A (RGB) and Model B (RGB + four analyzers).
 
 Both models share this loop. The checkpoint with the best validation mean
 IoU is the one scored on the test split. The threshold is the configured
-0.5 and is not chosen from the test images.
+0.5 and is not chosen from the test images. Training uses CUDA when the
+cache flush leaves enough free memory for the batch.
 """
 
 from __future__ import annotations
 
 import json
 import logging
-import os
 import time
 from pathlib import Path
-
-# The mask run is CPU-only. Set this before Torch is imported, or a visible
-# GPU would fail the check in train_models(). The normal experiment does not
-# import this module, so it can still see the GPU.
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 import matplotlib.pyplot as plt
 import mitsuba as mi
@@ -31,6 +26,7 @@ from sensor_sim.film.images import read_exr
 from sensor_sim.film.config import train_config
 from sensor_sim.film.dataset import DATASET_ROOT
 from sensor_sim.film.metrics import mean_std, scores
+from sensor_sim.film.sfp_math import select_torch_device
 from sensor_sim.film.unet import FilmUNet, parameter_count
 from sensor_sim.film.lighting import display_srgb
 from sensor_sim.render import configure_logging
@@ -93,7 +89,7 @@ def _tensors(images, labels, mean, std, channels: int) -> tuple[torch.Tensor, to
 
 
 def _loss(logits, target, pos_weight, bce_weight, dice_weight, smooth) -> torch.Tensor:
-    weight = None if pos_weight is None else torch.tensor([pos_weight], dtype=logits.dtype)
+    weight = None if pos_weight is None else torch.tensor([pos_weight], dtype=logits.dtype, device=logits.device)
     bce = nn.functional.binary_cross_entropy_with_logits(logits, target, pos_weight=weight)
     probability = torch.sigmoid(logits)
     numerator = 2.0 * (probability * target).sum() + smooth
@@ -106,8 +102,9 @@ def _predict(model, inputs, batch_size: int) -> np.ndarray:
     model.eval()
     outputs = []
     with torch.no_grad():
+        device = next(model.parameters()).device
         for start in range(0, inputs.shape[0], batch_size):
-            logits = model(inputs[start : start + batch_size])
+            logits = model(inputs[start : start + batch_size].to(device))
             outputs.append(torch.sigmoid(logits).cpu().numpy())
     return np.concatenate(outputs, axis=0)
 
@@ -120,14 +117,26 @@ def _mean_iou(probabilities, labels, threshold: float) -> float:
     return float(np.mean(values))
 
 
-def train_one(name: str, channels: int, train_images, train_labels, val_images, val_labels, mean, std, cfg, out_dir: Path) -> dict:
+def train_one(name: str, channels: int, train_images, train_labels, val_images, val_labels, mean, std, cfg, out_dir: Path, device: str) -> dict:
     """Train one model from seed 0 and return the best-validation test-ready checkpoint path."""
     out_dir.mkdir(parents=True, exist_ok=True)
     torch.manual_seed(int(cfg["seed"]))
     np.random.seed(int(cfg["seed"]))
-    model = FilmUNet(channels, base_channels=int(cfg["base_channels"]))
+    if device == "cuda":
+        torch.cuda.manual_seed_all(int(cfg["seed"]))
+    model = FilmUNet(channels, base_channels=int(cfg["base_channels"])).to(device)
+    param_device = next(model.parameters()).device
+    if param_device.type != device:
+        raise RuntimeError(f"{name} parameters are on {param_device}, requested {device}")
     count = parameter_count(model)
-    logger.info("film train model=%s in_channels=%d n_parameters=%d device=cpu", name, channels, count)
+    logger.info(
+        "film train model=%s in_channels=%d n_parameters=%d device=%s param_device=%s",
+        name,
+        channels,
+        count,
+        device,
+        param_device,
+    )
     inputs, targets = _tensors(train_images, train_labels, mean, std, channels)
     val_inputs, val_targets = _tensors(val_images, val_labels, mean, std, channels)
     weight = positive_weight(train_labels, float(cfg["pos_fraction_floor"]))
@@ -147,6 +156,8 @@ def train_one(name: str, channels: int, train_images, train_labels, val_images, 
         started = time.perf_counter()
         losses = []
         for batch_inputs, batch_targets in loader:
+            batch_inputs = batch_inputs.to(device)
+            batch_targets = batch_targets.to(device)
             optimizer.zero_grad(set_to_none=True)
             logits = model(batch_inputs)
             loss = _loss(
@@ -159,7 +170,7 @@ def train_one(name: str, channels: int, train_images, train_labels, val_images, 
             )
             loss.backward()
             optimizer.step()
-            losses.append(float(loss.detach()))
+            losses.append(float(loss.detach().cpu()))
         probabilities = _predict(model, val_inputs, int(cfg["batch_size"]))
         val_iou = _mean_iou(probabilities, val_labels, threshold)
         elapsed = time.perf_counter() - started
@@ -195,10 +206,11 @@ def train_one(name: str, channels: int, train_images, train_labels, val_images, 
     return {"name": name, "best_epoch": best_epoch, "best_val_iou": best_iou, "n_parameters": count, "checkpoint": str(out_dir / "best.pt")}
 
 
-def _load_model(path: Path) -> tuple[FilmUNet, dict]:
-    state = torch.load(path, map_location="cpu", weights_only=False)
+def _load_model(path: Path, device: str) -> tuple[FilmUNet, dict]:
+    state = torch.load(path, map_location=device, weights_only=False)
     model = FilmUNet(int(state["in_channels"]), base_channels=int(state["base_channels"]))
     model.load_state_dict(state["model"])
+    model.to(device)
     model.eval()
     return model, state
 
@@ -279,13 +291,13 @@ def _qualitative(path: Path, image: np.ndarray, label: np.ndarray, pred_a: np.nd
     plt.close(fig)
 
 
-def evaluate(cfg: dict) -> dict:
+def evaluate(cfg: dict, device: str) -> dict:
     test_images, test_labels, test_meta = _load_split("test")
     threshold = float(cfg["probability_threshold"])
     summary = {}
     stored = {}
     for name, channels in (("rgb", 3), ("rgb_polar", 7)):
-        model, state = _load_model(ROOT / "outputs" / "film" / "train" / name / "best.pt")
+        model, state = _load_model(ROOT / "outputs" / "film" / "train" / name / "best.pt", device)
         rows = _rows(model, state, test_images, test_labels, test_meta, channels)
         stored[name] = rows
         summary[name] = {
@@ -340,9 +352,25 @@ def evaluate(cfg: dict) -> dict:
 
 def train_models() -> dict:
     configure_logging()
-    if torch.cuda.is_available():
-        raise RuntimeError("CUDA is visible; this training run is CPU-only")
     cfg = train_config()
+    requested = str(cfg.get("device", "cuda"))
+    if requested != "cuda":
+        raise RuntimeError(f"configs/film/train.yaml device must be cuda, got {requested}")
+    widest = FilmUNet(7, base_channels=int(cfg["base_channels"]))
+    parameter_floor = parameter_count(widest)
+    del widest
+    device, reason, info = select_torch_device(parameter_floor)
+    logger.info(
+        "film train stage=device selected=%s reason=%s cuda_free_bytes=%s cuda_total_bytes=%s "
+        "batch_floor_bytes=%d torch=%s release=%s",
+        device,
+        reason,
+        info["free_bytes"],
+        info["total_bytes"],
+        info["batch_floor_bytes"],
+        info["torch_version"],
+        info["release"],
+    )
     train_images, train_labels, _train_meta = _load_split("train")
     val_images, val_labels, _val_meta = _load_split("validation")
     mean, std = standardization(train_images)
@@ -364,9 +392,10 @@ def train_models() -> dict:
             std,
             cfg,
             stats_dir / name,
+            device,
         )
-    summary = evaluate(cfg)
-    return {"train": results, "test": summary}
+    summary = evaluate(cfg, device)
+    return {"train": results, "test": summary, "device": info}
 
 
 def main() -> None:

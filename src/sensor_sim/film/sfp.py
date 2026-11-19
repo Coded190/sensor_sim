@@ -2,8 +2,9 @@
 
 ``uv run film-sfp`` runs experiment 01 (Cornell, film loss only) and
 experiment 02 (50 training shapes and 10 held-out shapes). Renders use
-``cuda_ad_spectral_polarized``. Training uses the GPU when Torch can see
-one with at least 8 GiB free, and the CPU otherwise. The earlier gray-ball
+``cuda_ad_spectral_polarized``. Training uses the GPU after the Dr.Jit and
+Torch caches are flushed, unless the free memory is below the batch floor.
+The earlier gray-ball
 run is ``run_previous_sfp`` and is not what the entry point calls.
 
 Mean angular error is the mean, over pixels in one region with S0 > 1e-4,
@@ -328,15 +329,28 @@ def _loss_mask(measurement: dict, object_indices: set[int]) -> np.ndarray:
 
 
 def train_models(scene_name: str, train_view: dict, test_view: dict) -> dict:
-    """Fit three U-Nets on view A. Importing the network hides the GPU from Torch."""
-    import os
-
-    os.environ["CUDA_VISIBLE_DEVICES"] = ""
+    """Fit three U-Nets on view A. CUDA is used when the batch floor is free."""
     import torch
 
+    from sensor_sim.film.sfp_math import select_torch_device
     from sensor_sim.film.unet import FilmUNet, parameter_count
 
+    probe = FilmUNet(9, out_channels=3)
+    parameter_floor = parameter_count(probe)
+    del probe
+    device, reason, info = select_torch_device(parameter_floor)
+    logger.info(
+        "sfp stage=device selected=%s reason=%s torch=%s cuda_free_bytes=%s batch_floor_bytes=%d release=%s",
+        device,
+        reason,
+        info["torch_version"],
+        info["free_bytes"],
+        info["batch_floor_bytes"],
+        info["release"],
+    )
     torch.manual_seed(SEED)
+    if device == "cuda":
+        torch.cuda.manual_seed_all(SEED)
     object_indices = set(train_view["object_indices"])
     train_mask = _loss_mask(train_view["measurement"], object_indices)
     test_mask = _loss_mask(test_view["measurement"], object_indices)
@@ -348,7 +362,11 @@ def train_models(scene_name: str, train_view: dict, test_view: dict) -> dict:
         raw_train = _channels(train_view["measurement"], model_name)
         raw_test = _channels(test_view["measurement"], model_name)
         train_input, test_input, stats = _standardize(raw_train, raw_test, train_mask)
-        model = FilmUNet(train_input.shape[-1], out_channels=3)
+        model = FilmUNet(train_input.shape[-1], out_channels=3).to(device)
+        param_device = next(model.parameters()).device
+        logger.info("sfp stage=train model=%s param_device=%s requested=%s", model_name, param_device, device)
+        if param_device.type != device:
+            raise RuntimeError(f"{model_name} parameters are on {param_device}, requested {device}")
         optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, betas=(0.9, 0.999), weight_decay=0.0)
         truth = torch.tensor(train_view["measurement"]["normal"], dtype=torch.float32)
         source = torch.tensor(np.transpose(train_input, (2, 0, 1)), dtype=torch.float32)
@@ -374,16 +392,16 @@ def train_models(scene_name: str, train_view: dict, test_view: dict) -> dict:
                     batch_mask.append(torch.tensor(crop_mask))
                 if not batch_in:
                     continue
-                prediction = model(torch.stack(batch_in))
+                prediction = model(torch.stack(batch_in).to(device))
                 prediction = prediction / prediction.norm(dim=1, keepdim=True).clamp_min(1e-8)
-                target = torch.stack(batch_truth).permute(0, 3, 1, 2)
-                chosen = torch.stack(batch_mask)
+                target = torch.stack(batch_truth).permute(0, 3, 1, 2).to(device)
+                chosen = torch.stack(batch_mask).to(device)
                 cosine = (prediction * target).sum(dim=1)
                 loss = (1.0 - cosine)[chosen].mean()
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-                losses.append(float(loss.detach()))
+                losses.append(float(loss.detach().cpu()))
             last_loss = float(np.mean(losses)) if losses else float("nan")
             logger.info(
                 "sfp train scene=%s model=%s epoch=%d loss=%.6f pixels=%d",
@@ -398,10 +416,10 @@ def train_models(scene_name: str, train_view: dict, test_view: dict) -> dict:
         with torch.no_grad():
             for view in (train_view, test_view):
                 raw = train_input if view["view"] == train_view["view"] else test_input
-                tensor = torch.tensor(np.transpose(raw, (2, 0, 1))[None], dtype=torch.float32)
+                tensor = torch.tensor(np.transpose(raw, (2, 0, 1))[None], dtype=torch.float32, device=device)
                 prediction = model(tensor)[0]
                 prediction = prediction / prediction.norm(dim=0, keepdim=True).clamp_min(1e-8)
-                predicted = np.transpose(prediction.numpy(), (1, 2, 0))
+                predicted = np.transpose(prediction.detach().cpu().numpy(), (1, 2, 0))
                 # Each view has its own shape-index numbers. View A's indices do not name view B's surfaces.
                 mask = _loss_mask(view["measurement"], set(view["object_indices"]))
                 region_scores = _region_scores(view, predicted, mask)
@@ -420,6 +438,8 @@ def train_models(scene_name: str, train_view: dict, test_view: dict) -> dict:
             "batch": BATCH,
             "crop": CROP,
             "seed": SEED,
+            "device": device,
+            "param_device": str(param_device),
         }
         del model
     return results

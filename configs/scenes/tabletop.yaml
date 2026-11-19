@@ -1,0 +1,24 @@
+mode: random
+seed: 0
+num_objects: [2, 5]
+assets: [sphere, ellipsoid, rounded_box, capsule, torus, cylinder, cone, bumpy]
+materials: [dielectric, pplastic, conductor, roughconductor]
+include_nonpolarizing: false
+allow_unprofiled: false
+profile_file: configs/scenes/material_profiles.json
+resolution: [128, 128]
+spp: 16
+gap: 0.005
+camera:
+  position: [0.0, -0.55, 0.32]
+  target: [0.0, 0.0, 0.18]
+  up: [0.0, 0.0, 1.0]
+  fov_deg: 55.0
+  near_clip: 0.01
+  far_clip: 100.0
+light:
+  position: [0.0, -0.02, 0.598]
+  target: [0.0, 0.0, 0.051]
+  up: [0.0, 1.0, 0.0]
+  size: [0.15, 0.15]
+  radiance: 18.0

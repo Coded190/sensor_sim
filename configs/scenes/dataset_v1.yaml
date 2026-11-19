@@ -1,0 +1,1944 @@
+# Dataset v1 production contract. 64 successful scenes are selected.
+# The historical component-denominator reference remains stable: false.
+# Multi-object radii are at least 0.04 m so a cone can exceed 80 object-id pixels.
+# generation_authorized is true for the production run that consumes this file.
+mode: random
+dataset_id: dataset_v1_spec
+variant: cuda_ad_spectral_polarized
+integrator: stokes/path
+sampler: independent
+rfilter: box
+resolution:
+- 128
+- 128
+spp: 256
+measured_candidate_spp: 256
+measured_candidate_status: selected_technical_setting
+successful_scenes: 64
+primary_normal: camera_space_shading
+nonuniform_scale: rejected
+gap_m: 0.005
+visibility:
+  resolution:
+  - 128
+  - 128
+  training_min_object_pixels: 80
+  fully_occluded: 0
+  note: Low-visibility objects stay in the sample and are not dropped.
+materials:
+  primary:
+  - type: dielectric
+    int_ior: 1.33
+    ext_ior: 1.0
+  - type: dielectric
+    int_ior: 1.4
+    ext_ior: 1.0
+  - type: dielectric
+    int_ior: 1.5
+    ext_ior: 1.0
+  - type: dielectric
+    int_ior: 1.6
+    ext_ior: 1.0
+  - type: dielectric
+    int_ior: 1.7
+    ext_ior: 1.0
+  - type: pplastic
+    preset: phase2
+  - type: conductor
+    material: Cu
+  - type: roughconductor
+    material: Cu
+    alpha: 0.1
+    distribution: beckmann
+  weak_polarization:
+  - type: roughconductor
+    material: Au
+    alpha: 0.1
+    distribution: beckmann
+    decision: weak_stratum
+    p95_dolp_256spp: 0.174
+    fraction_above_0_2: 0.0034
+assets:
+- sphere
+- ellipsoid
+- rounded_box
+- capsule
+- torus
+- cylinder
+- cone
+- bumpy
+object_counts:
+- 1
+- 2
+- 3
+- 4
+split_modes:
+- scene
+- asset_instance
+- asset_family
+- material
+- material_range
+proposed_coverage_floor:
+  successful_scenes: 64
+  meaning: one successful scene for each family, each primary material group, and
+    object counts 1 and 3. Not a frozen dataset size.
+camera:
+  position:
+  - 0.0
+  - -0.55
+  - 0.32
+  target:
+  - 0.0
+  - 0.0
+  - 0.18
+  up:
+  - 0.0
+  - 0.0
+  - 1.0
+  fov_deg: 55.0
+  near_clip: 0.01
+  far_clip: 100.0
+light:
+  position:
+  - 0.0
+  - -0.02
+  - 0.598
+  target:
+  - 0.0
+  - 0.0
+  - 0.051
+  up:
+  - 0.0
+  - 1.0
+  - 0.0
+  size:
+  - 0.15
+  - 0.15
+  radiance: 18.0
+seeds:
+  geometry: SeedSequence([scene_seed, 1])
+  material: SeedSequence([scene_seed, 2])
+  scene: stream_seed(base, slot, attempt, scene)
+  render: stream_seed(base, slot, attempt, render)
+  rule: A failed attempt retries the same stratum slot. It does not draw a different
+    family or drop an object.
+retry:
+  max_attempts_default: 8 times the remaining success count
+  same_stratum: true
+output_schema:
+  channels:
+  - R
+  - G
+  - B
+  - S0.R
+  - S0.G
+  - S0.B
+  - S1.R
+  - S1.G
+  - S1.B
+  - S2.R
+  - S2.G
+  - S2.B
+  - S3.R
+  - S3.G
+  - S3.B
+  dtype: float32
+  alpha: false
+  stokes: signed
+  scalar_stokes: mean of the three RGB-converted channels, not wavelength-resolved
+ground_truth:
+  primary_normal: camera_space_shading
+  depth: Mitsuba distance; |position-camera| - depth = near_clip / dot(ray, camera_forward)
+  ids: logical object and material ids, not prim_index
+splits:
+  modes:
+  - scene
+  - asset_instance
+  - asset_family
+  - material
+  - material_range
+  scene_disjoint_may_share_material: true
+  material_holdout_may_not_share_bsdf_type: true
+  built_only_from: audited completed_ids of the current run_id
+run:
+  run_id: uuid4 hex, required before publication
+  resume: refuses a changed config hash and drops samples that fail the publication
+    audit
+  generation_authorized: true
+  split_seed: 17011
+quotas:
+  status: approved
+  per_family: 8
+  per_material: 8
+  object_counts:
+    '1': 32
+    '2': 16
+    '3': 8
+    '4': 8
+  partial_occlusion: 8
+  repeated_asset: 8
+  note: Approved for 64 successful scenes. Gold and dragon are excluded.
+generation_authorized: true
+resource_estimate:
+  spp256_note: Corrected Convergence v2 selected 256 spp as the lowest passing candidate.
+    The historical component-denominator result remains stable false and is not overwritten.
+    This note does not approve successful_scenes or authorize generation.
+  historical_component_denominator: 'stable: false, retained and not overwritten'
+  serial_seconds_no_retry: 1532.4
+  serial_seconds_with_contingency: 2758.32
+  storage_bytes_mean: 429600900.0
+  storage_bytes_with_contingency: 684116196.0
+  count_seconds_mean:
+    '1': 12.4625
+    '2': 27.75
+    '3': 36.0
+    '4': 50.2
+  retry_sensitivity: 1.2 conservative sensitivity; the ten-scene run had zero failures
+    and does not justify a zero retry rate
+seed: 17011
+gap: 0.005
+profile_file: configs/scenes/material_profiles.json
+require_sample_supervision: true
+strata:
+- slot_id: slot_00
+  count: 1
+  family: sphere
+  material: dielectric
+  preset: &id002
+    type: dielectric
+    int_ior: 1.33
+    ext_ior: 1.0
+  split: validation
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: &id001
+    - 128
+    - 128
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: sphere
+    radius: 0.05
+- slot_id: slot_01
+  count: 1
+  family: sphere
+  material: dielectric
+  preset: &id003
+    type: dielectric
+    int_ior: 1.4
+    ext_ior: 1.0
+  split: test
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: sphere
+    radius: 0.05
+- slot_id: slot_02
+  count: 1
+  family: sphere
+  material: dielectric
+  preset: &id004
+    type: dielectric
+    int_ior: 1.5
+    ext_ior: 1.0
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: sphere
+    radius: 0.05
+- slot_id: slot_03
+  count: 1
+  family: sphere
+  material: dielectric
+  preset: &id005
+    type: dielectric
+    int_ior: 1.6
+    ext_ior: 1.0
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: sphere
+    radius: 0.05
+- slot_id: slot_04
+  count: 1
+  family: sphere
+  material: dielectric
+  preset: &id006
+    type: dielectric
+    int_ior: 1.7
+    ext_ior: 1.0
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: sphere
+    radius: 0.05
+- slot_id: slot_05
+  count: 1
+  family: sphere
+  material: pplastic
+  preset: &id007
+    type: pplastic
+    int_ior: 1.5
+    ext_ior: 1.0
+    diffuse_reflectance: 0.5
+    alpha: 0.1
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: sphere
+    radius: 0.05
+- slot_id: slot_06
+  count: 1
+  family: sphere
+  material: conductor
+  preset: &id008
+    type: conductor
+    material: Cu
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: sphere
+    radius: 0.05
+- slot_id: slot_07
+  count: 1
+  family: sphere
+  material: roughconductor
+  preset: &id009
+    type: roughconductor
+    material: Cu
+    distribution: beckmann
+    alpha: 0.1
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: sphere
+    radius: 0.05
+- slot_id: slot_08
+  count: 1
+  family: ellipsoid
+  material: dielectric
+  preset: *id002
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: ellipsoid
+    radius: 0.05
+- slot_id: slot_09
+  count: 1
+  family: ellipsoid
+  material: dielectric
+  preset: *id003
+  split: validation
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: ellipsoid
+    radius: 0.05
+- slot_id: slot_10
+  count: 1
+  family: ellipsoid
+  material: dielectric
+  preset: *id004
+  split: test
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: ellipsoid
+    radius: 0.05
+- slot_id: slot_11
+  count: 1
+  family: ellipsoid
+  material: dielectric
+  preset: *id005
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: ellipsoid
+    radius: 0.05
+- slot_id: slot_12
+  count: 1
+  family: ellipsoid
+  material: dielectric
+  preset: *id006
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: ellipsoid
+    radius: 0.05
+- slot_id: slot_13
+  count: 1
+  family: ellipsoid
+  material: pplastic
+  preset: *id007
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: ellipsoid
+    radius: 0.05
+- slot_id: slot_14
+  count: 1
+  family: ellipsoid
+  material: conductor
+  preset: *id008
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: ellipsoid
+    radius: 0.05
+- slot_id: slot_15
+  count: 1
+  family: ellipsoid
+  material: roughconductor
+  preset: *id009
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: ellipsoid
+    radius: 0.05
+- slot_id: slot_16
+  count: 1
+  family: rounded_box
+  material: dielectric
+  preset: *id002
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: rounded_box
+    radius: 0.05
+- slot_id: slot_17
+  count: 1
+  family: rounded_box
+  material: dielectric
+  preset: *id003
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: rounded_box
+    radius: 0.05
+- slot_id: slot_18
+  count: 1
+  family: rounded_box
+  material: dielectric
+  preset: *id004
+  split: validation
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: rounded_box
+    radius: 0.05
+- slot_id: slot_19
+  count: 1
+  family: rounded_box
+  material: dielectric
+  preset: *id005
+  split: test
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: rounded_box
+    radius: 0.05
+- slot_id: slot_20
+  count: 1
+  family: rounded_box
+  material: dielectric
+  preset: *id006
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: rounded_box
+    radius: 0.05
+- slot_id: slot_21
+  count: 1
+  family: rounded_box
+  material: pplastic
+  preset: *id007
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: rounded_box
+    radius: 0.05
+- slot_id: slot_22
+  count: 1
+  family: rounded_box
+  material: conductor
+  preset: *id008
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: rounded_box
+    radius: 0.05
+- slot_id: slot_23
+  count: 1
+  family: rounded_box
+  material: roughconductor
+  preset: *id009
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: rounded_box
+    radius: 0.05
+- slot_id: slot_24
+  count: 1
+  family: capsule
+  material: dielectric
+  preset: *id002
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: capsule
+    radius: 0.05
+- slot_id: slot_25
+  count: 1
+  family: capsule
+  material: dielectric
+  preset: *id003
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: capsule
+    radius: 0.05
+- slot_id: slot_26
+  count: 1
+  family: capsule
+  material: dielectric
+  preset: *id004
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: capsule
+    radius: 0.05
+- slot_id: slot_27
+  count: 1
+  family: capsule
+  material: dielectric
+  preset: *id005
+  split: validation
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: capsule
+    radius: 0.05
+- slot_id: slot_28
+  count: 1
+  family: capsule
+  material: dielectric
+  preset: *id006
+  split: test
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: capsule
+    radius: 0.05
+- slot_id: slot_29
+  count: 1
+  family: capsule
+  material: pplastic
+  preset: *id007
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: capsule
+    radius: 0.05
+- slot_id: slot_30
+  count: 1
+  family: capsule
+  material: conductor
+  preset: *id008
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: capsule
+    radius: 0.05
+- slot_id: slot_31
+  count: 1
+  family: capsule
+  material: roughconductor
+  preset: *id009
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 1
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: capsule
+    radius: 0.05
+- slot_id: slot_32
+  count: 1
+  family: torus
+  material: dielectric
+  preset: *id002
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 2
+  placement_kind: occlusion
+  require_partial_occlusion: true
+  repeated_asset: false
+  objects:
+  - family: torus
+    radius: 0.055
+  - family: torus
+    radius: 0.05
+- slot_id: slot_33
+  count: 1
+  family: torus
+  material: dielectric
+  preset: *id003
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 2
+  placement_kind: occlusion
+  require_partial_occlusion: true
+  repeated_asset: false
+  objects:
+  - family: torus
+    radius: 0.055
+  - family: torus
+    radius: 0.05
+- slot_id: slot_34
+  count: 1
+  family: torus
+  material: dielectric
+  preset: *id004
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 2
+  placement_kind: occlusion
+  require_partial_occlusion: true
+  repeated_asset: false
+  objects:
+  - family: torus
+    radius: 0.055
+  - family: torus
+    radius: 0.05
+- slot_id: slot_35
+  count: 1
+  family: torus
+  material: dielectric
+  preset: *id005
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 2
+  placement_kind: occlusion
+  require_partial_occlusion: true
+  repeated_asset: false
+  objects:
+  - family: torus
+    radius: 0.055
+  - family: torus
+    radius: 0.05
+- slot_id: slot_36
+  count: 1
+  family: torus
+  material: dielectric
+  preset: *id006
+  split: validation
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 2
+  placement_kind: occlusion
+  require_partial_occlusion: true
+  repeated_asset: false
+  objects:
+  - family: torus
+    radius: 0.055
+  - family: torus
+    radius: 0.05
+- slot_id: slot_37
+  count: 1
+  family: torus
+  material: pplastic
+  preset: *id007
+  split: test
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 2
+  placement_kind: occlusion
+  require_partial_occlusion: true
+  repeated_asset: false
+  objects:
+  - family: torus
+    radius: 0.055
+  - family: torus
+    radius: 0.05
+- slot_id: slot_38
+  count: 1
+  family: torus
+  material: conductor
+  preset: *id008
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 2
+  placement_kind: occlusion
+  require_partial_occlusion: true
+  repeated_asset: false
+  objects:
+  - family: torus
+    radius: 0.055
+  - family: torus
+    radius: 0.05
+- slot_id: slot_39
+  count: 1
+  family: torus
+  material: roughconductor
+  preset: *id009
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 2
+  placement_kind: occlusion
+  require_partial_occlusion: true
+  repeated_asset: false
+  objects:
+  - family: torus
+    radius: 0.055
+  - family: torus
+    radius: 0.05
+- slot_id: slot_40
+  count: 1
+  family: cylinder
+  material: dielectric
+  preset: *id002
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 2
+  placement_kind: repeated
+  require_partial_occlusion: false
+  repeated_asset: true
+  objects:
+  - family: cylinder
+    radius: 0.055
+  - family: cylinder
+    radius: 0.048
+- slot_id: slot_41
+  count: 1
+  family: cylinder
+  material: dielectric
+  preset: *id003
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 2
+  placement_kind: repeated
+  require_partial_occlusion: false
+  repeated_asset: true
+  objects:
+  - family: cylinder
+    radius: 0.055
+  - family: cylinder
+    radius: 0.048
+- slot_id: slot_42
+  count: 1
+  family: cylinder
+  material: dielectric
+  preset: *id004
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 2
+  placement_kind: repeated
+  require_partial_occlusion: false
+  repeated_asset: true
+  objects:
+  - family: cylinder
+    radius: 0.055
+  - family: cylinder
+    radius: 0.048
+- slot_id: slot_43
+  count: 1
+  family: cylinder
+  material: dielectric
+  preset: *id005
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 2
+  placement_kind: repeated
+  require_partial_occlusion: false
+  repeated_asset: true
+  objects:
+  - family: cylinder
+    radius: 0.055
+  - family: cylinder
+    radius: 0.048
+- slot_id: slot_44
+  count: 1
+  family: cylinder
+  material: dielectric
+  preset: *id006
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 2
+  placement_kind: repeated
+  require_partial_occlusion: false
+  repeated_asset: true
+  objects:
+  - family: cylinder
+    radius: 0.055
+  - family: cylinder
+    radius: 0.048
+- slot_id: slot_45
+  count: 1
+  family: cylinder
+  material: pplastic
+  preset: *id007
+  split: validation
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 2
+  placement_kind: repeated
+  require_partial_occlusion: false
+  repeated_asset: true
+  objects:
+  - family: cylinder
+    radius: 0.055
+  - family: cylinder
+    radius: 0.048
+- slot_id: slot_46
+  count: 1
+  family: cylinder
+  material: conductor
+  preset: *id008
+  split: test
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 2
+  placement_kind: repeated
+  require_partial_occlusion: false
+  repeated_asset: true
+  objects:
+  - family: cylinder
+    radius: 0.055
+  - family: cylinder
+    radius: 0.048
+- slot_id: slot_47
+  count: 1
+  family: cylinder
+  material: roughconductor
+  preset: *id009
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 2
+  placement_kind: repeated
+  require_partial_occlusion: false
+  repeated_asset: true
+  objects:
+  - family: cylinder
+    radius: 0.055
+  - family: cylinder
+    radius: 0.048
+- slot_id: slot_48
+  count: 1
+  family: cone
+  material: dielectric
+  preset: *id002
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 3
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: cone
+    radius: 0.05
+  - family: cone
+    radius: 0.046
+  - family: cone
+    radius: 0.042
+- slot_id: slot_49
+  count: 1
+  family: cone
+  material: dielectric
+  preset: *id003
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 3
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: cone
+    radius: 0.05
+  - family: cone
+    radius: 0.046
+  - family: cone
+    radius: 0.042
+- slot_id: slot_50
+  count: 1
+  family: cone
+  material: dielectric
+  preset: *id004
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 3
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: cone
+    radius: 0.05
+  - family: cone
+    radius: 0.046
+  - family: cone
+    radius: 0.042
+- slot_id: slot_51
+  count: 1
+  family: cone
+  material: dielectric
+  preset: *id005
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 3
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: cone
+    radius: 0.05
+  - family: cone
+    radius: 0.046
+  - family: cone
+    radius: 0.042
+- slot_id: slot_52
+  count: 1
+  family: cone
+  material: dielectric
+  preset: *id006
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 3
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: cone
+    radius: 0.05
+  - family: cone
+    radius: 0.046
+  - family: cone
+    radius: 0.042
+- slot_id: slot_53
+  count: 1
+  family: cone
+  material: pplastic
+  preset: *id007
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 3
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: cone
+    radius: 0.05
+  - family: cone
+    radius: 0.046
+  - family: cone
+    radius: 0.042
+- slot_id: slot_54
+  count: 1
+  family: cone
+  material: conductor
+  preset: *id008
+  split: validation
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 3
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: cone
+    radius: 0.05
+  - family: cone
+    radius: 0.046
+  - family: cone
+    radius: 0.042
+- slot_id: slot_55
+  count: 1
+  family: cone
+  material: roughconductor
+  preset: *id009
+  split: test
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 3
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: cone
+    radius: 0.05
+  - family: cone
+    radius: 0.046
+  - family: cone
+    radius: 0.042
+- slot_id: slot_56
+  count: 1
+  family: bumpy
+  material: dielectric
+  preset: *id002
+  split: test
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 4
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: bumpy
+    radius: 0.05
+  - family: bumpy
+    radius: 0.045
+  - family: bumpy
+    radius: 0.042
+  - family: bumpy
+    radius: 0.04
+- slot_id: slot_57
+  count: 1
+  family: bumpy
+  material: dielectric
+  preset: *id003
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 4
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: bumpy
+    radius: 0.05
+  - family: bumpy
+    radius: 0.045
+  - family: bumpy
+    radius: 0.042
+  - family: bumpy
+    radius: 0.04
+- slot_id: slot_58
+  count: 1
+  family: bumpy
+  material: dielectric
+  preset: *id004
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 4
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: bumpy
+    radius: 0.05
+  - family: bumpy
+    radius: 0.045
+  - family: bumpy
+    radius: 0.042
+  - family: bumpy
+    radius: 0.04
+- slot_id: slot_59
+  count: 1
+  family: bumpy
+  material: dielectric
+  preset: *id005
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 4
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: bumpy
+    radius: 0.05
+  - family: bumpy
+    radius: 0.045
+  - family: bumpy
+    radius: 0.042
+  - family: bumpy
+    radius: 0.04
+- slot_id: slot_60
+  count: 1
+  family: bumpy
+  material: dielectric
+  preset: *id006
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 4
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: bumpy
+    radius: 0.05
+  - family: bumpy
+    radius: 0.045
+  - family: bumpy
+    radius: 0.042
+  - family: bumpy
+    radius: 0.04
+- slot_id: slot_61
+  count: 1
+  family: bumpy
+  material: pplastic
+  preset: *id007
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 4
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: bumpy
+    radius: 0.05
+  - family: bumpy
+    radius: 0.045
+  - family: bumpy
+    radius: 0.042
+  - family: bumpy
+    radius: 0.04
+- slot_id: slot_62
+  count: 1
+  family: bumpy
+  material: conductor
+  preset: *id008
+  split: train
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 4
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: bumpy
+    radius: 0.05
+  - family: bumpy
+    radius: 0.045
+  - family: bumpy
+    radius: 0.042
+  - family: bumpy
+    radius: 0.04
+- slot_id: slot_63
+  count: 1
+  family: bumpy
+  material: roughconductor
+  preset: *id009
+  split: validation
+  split_seed: 17011
+  placement:
+    gap_m: 0.005
+    floor_z: 0.001
+    max_objects: 4
+    drop_objects: false
+    yaw_axis: Z
+  visibility:
+    resolution: *id001
+    training_min_object_pixels: 80
+    policy_version: 1
+  seed_rule: stream_seed(base, slot, attempt, name) and child_seeds(scene_seed)
+  count_objects: 4
+  placement_kind: plain
+  require_partial_occlusion: false
+  repeated_asset: false
+  objects:
+  - family: bumpy
+    radius: 0.05
+  - family: bumpy
+    radius: 0.045
+  - family: bumpy
+    radius: 0.042
+  - family: bumpy
+    radius: 0.04
+schedule_hash: b61cd6828f7a9dfd4faca98738eaf167a603a3c35f84a694ece1450531483f29
+placement_attempts: 200

@@ -1,0 +1,45 @@
+{
+  "dielectric": {
+    "response_class": "keeps",
+    "expected_class": "keeps",
+    "max_dolp": 0.876,
+    "source": "phase2_gray_room_sphere",
+    "note": "Phase 2 max DoLP on the Y-up dielectric sphere. A sample whose IOR is not 1.5 is labeled untested."
+  },
+  "pplastic": {
+    "response_class": "keeps",
+    "expected_class": "keeps",
+    "max_dolp": 0.704,
+    "source": "phase2_gray_room_sphere",
+    "note": "Phase 2 max DoLP for pplastic. Roughness and IOR other than the preset are untested until a profile is measured."
+  },
+  "diffuse": {
+    "response_class": "does_not",
+    "expected_class": "does_not",
+    "max_dolp": 0.0,
+    "source": "phase2_gray_room_sphere"
+  },
+  "roughdielectric": {
+    "response_class": "does_not",
+    "expected_class": "does_not",
+    "max_dolp": 0.0,
+    "source": "phase2_gray_room_sphere"
+  },
+  "plastic": {
+    "response_class": "does_not",
+    "expected_class": "does_not",
+    "max_dolp": 0.0,
+    "source": "phase2_gray_room_sphere"
+  },
+  "conductor": {
+    "response_class": "keeps",
+    "expected_class": "keeps",
+    "max_dolp": 0.405396,
+    "source": "cornell_copper_dragon"
+  },
+  "roughconductor": {
+    "response_class": "untested",
+    "expected_class": "untested",
+    "source": "not_measured"
+  }
+}

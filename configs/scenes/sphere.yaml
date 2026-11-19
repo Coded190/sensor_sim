@@ -1,0 +1,7 @@
+# Deterministic Z-up sphere. Center z = 0.05 + 0.001.
+mode: prototype
+seed: 0
+resolution: [128, 128]
+spp: 16
+segments: 192
+rings: 96

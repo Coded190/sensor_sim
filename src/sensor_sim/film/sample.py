@@ -55,8 +55,7 @@ def base_parameters(scene: dict) -> dict:
 def render_validation_sample() -> dict:
     configure_logging()
     rendering = rendering_config()
-    if str(rendering["variant"]).startswith("cuda"):
-        raise RuntimeError(f"refusing GPU variant {rendering['variant']}")
+    logger.info("film sample stage=render variant=%s", rendering["variant"])
     floor = float(rendering["s0_floor"])
     factor = float(rendering["intensity_factor"])
     tries = int(rendering["intensity_tries"])

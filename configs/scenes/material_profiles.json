@@ -1,0 +1,1501 @@
+{
+  "diffuse": {
+    "max_dolp": 0.0,
+    "mean_dolp": 0.0,
+    "fraction_above_threshold": 0.0,
+    "mean_dop": 0.0,
+    "response_class": "does_not",
+    "expected_class": "does_not",
+    "agrees": true,
+    "n": 1359,
+    "fraction_above_0_2": 0.0,
+    "n_stokes_inequality": 0,
+    "bsdf": {
+      "type": "diffuse",
+      "reflectance": 0.5
+    },
+    "material_family": "diffuse",
+    "scene_id": "scene_000000",
+    "camera": {
+      "position": [
+        0.0,
+        -0.55,
+        0.32
+      ],
+      "target": [
+        0.0,
+        0.0,
+        0.18
+      ],
+      "up": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fov_deg": 55.0,
+      "near_clip": 0.01,
+      "far_clip": 100.0
+    },
+    "light": {
+      "position": [
+        0.0,
+        -0.02,
+        0.598
+      ],
+      "target": [
+        0.0,
+        0.0,
+        0.051
+      ],
+      "up": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "size": [
+        0.15,
+        0.15
+      ],
+      "radiance": 18.0
+    },
+    "variant": "cuda_ad_spectral_polarized",
+    "resolution": [
+      256,
+      256
+    ],
+    "spp": 64,
+    "experiment": "z-up sphere qualification"
+  },
+  "dielectric": {
+    "max_dolp": 0.9999997786865131,
+    "mean_dolp": 0.2237041891625068,
+    "fraction_above_threshold": 0.2737471952131638,
+    "mean_dop": 0.223704263962209,
+    "response_class": "keeps",
+    "expected_class": "keeps",
+    "agrees": true,
+    "n": 1337,
+    "fraction_above_0_2": 0.2737471952131638,
+    "n_stokes_inequality": 0,
+    "bsdf": {
+      "type": "dielectric",
+      "int_ior": 1.5,
+      "ext_ior": 1.0
+    },
+    "material_family": "dielectric",
+    "scene_id": "scene_000000",
+    "camera": {
+      "position": [
+        0.0,
+        -0.55,
+        0.32
+      ],
+      "target": [
+        0.0,
+        0.0,
+        0.18
+      ],
+      "up": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fov_deg": 55.0,
+      "near_clip": 0.01,
+      "far_clip": 100.0
+    },
+    "light": {
+      "position": [
+        0.0,
+        -0.02,
+        0.598
+      ],
+      "target": [
+        0.0,
+        0.0,
+        0.051
+      ],
+      "up": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "size": [
+        0.15,
+        0.15
+      ],
+      "radiance": 18.0
+    },
+    "variant": "cuda_ad_spectral_polarized",
+    "resolution": [
+      256,
+      256
+    ],
+    "spp": 64,
+    "experiment": "z-up sphere qualification"
+  },
+  "roughdielectric": {
+    "max_dolp": 0.0,
+    "mean_dolp": 0.0,
+    "fraction_above_threshold": 0.0,
+    "mean_dop": 0.0,
+    "response_class": "does_not",
+    "expected_class": "does_not",
+    "agrees": true,
+    "n": 1352,
+    "fraction_above_0_2": 0.0,
+    "n_stokes_inequality": 0,
+    "bsdf": {
+      "type": "roughdielectric",
+      "int_ior": 1.5,
+      "ext_ior": 1.0,
+      "distribution": "beckmann",
+      "alpha": 0.1
+    },
+    "material_family": "roughdielectric",
+    "scene_id": "scene_000000",
+    "camera": {
+      "position": [
+        0.0,
+        -0.55,
+        0.32
+      ],
+      "target": [
+        0.0,
+        0.0,
+        0.18
+      ],
+      "up": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fov_deg": 55.0,
+      "near_clip": 0.01,
+      "far_clip": 100.0
+    },
+    "light": {
+      "position": [
+        0.0,
+        -0.02,
+        0.598
+      ],
+      "target": [
+        0.0,
+        0.0,
+        0.051
+      ],
+      "up": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "size": [
+        0.15,
+        0.15
+      ],
+      "radiance": 18.0
+    },
+    "variant": "cuda_ad_spectral_polarized",
+    "resolution": [
+      256,
+      256
+    ],
+    "spp": 64,
+    "experiment": "z-up sphere qualification"
+  },
+  "pplastic": {
+    "max_dolp": 0.5599903152297957,
+    "mean_dolp": 0.08736873644793301,
+    "fraction_above_threshold": 0.10890360559234731,
+    "mean_dop": 0.08736873644793301,
+    "response_class": "keeps",
+    "expected_class": "keeps",
+    "agrees": true,
+    "n": 1359,
+    "fraction_above_0_2": 0.10890360559234731,
+    "n_stokes_inequality": 0,
+    "bsdf": {
+      "type": "pplastic",
+      "int_ior": 1.5,
+      "ext_ior": 1.0,
+      "diffuse_reflectance": 0.5,
+      "alpha": 0.1
+    },
+    "material_family": "pplastic",
+    "scene_id": "scene_000000",
+    "camera": {
+      "position": [
+        0.0,
+        -0.55,
+        0.32
+      ],
+      "target": [
+        0.0,
+        0.0,
+        0.18
+      ],
+      "up": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fov_deg": 55.0,
+      "near_clip": 0.01,
+      "far_clip": 100.0
+    },
+    "light": {
+      "position": [
+        0.0,
+        -0.02,
+        0.598
+      ],
+      "target": [
+        0.0,
+        0.0,
+        0.051
+      ],
+      "up": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "size": [
+        0.15,
+        0.15
+      ],
+      "radiance": 18.0
+    },
+    "variant": "cuda_ad_spectral_polarized",
+    "resolution": [
+      256,
+      256
+    ],
+    "spp": 64,
+    "experiment": "z-up sphere qualification"
+  },
+  "plastic": {
+    "max_dolp": 0.0,
+    "mean_dolp": 0.0,
+    "fraction_above_threshold": 0.0,
+    "mean_dop": 0.0,
+    "response_class": "does_not",
+    "expected_class": "does_not",
+    "agrees": true,
+    "n": 1359,
+    "fraction_above_0_2": 0.0,
+    "n_stokes_inequality": 0,
+    "bsdf": {
+      "type": "plastic",
+      "int_ior": 1.5,
+      "diffuse_reflectance": 0.5
+    },
+    "material_family": "plastic",
+    "scene_id": "scene_000000",
+    "camera": {
+      "position": [
+        0.0,
+        -0.55,
+        0.32
+      ],
+      "target": [
+        0.0,
+        0.0,
+        0.18
+      ],
+      "up": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fov_deg": 55.0,
+      "near_clip": 0.01,
+      "far_clip": 100.0
+    },
+    "light": {
+      "position": [
+        0.0,
+        -0.02,
+        0.598
+      ],
+      "target": [
+        0.0,
+        0.0,
+        0.051
+      ],
+      "up": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "size": [
+        0.15,
+        0.15
+      ],
+      "radiance": 18.0
+    },
+    "variant": "cuda_ad_spectral_polarized",
+    "resolution": [
+      256,
+      256
+    ],
+    "spp": 64,
+    "experiment": "z-up sphere qualification"
+  },
+  "conductor": {
+    "max_dolp": 0.23824755853963805,
+    "mean_dolp": 0.12709801100270926,
+    "fraction_above_threshold": 0.16749585406301823,
+    "mean_dop": 0.12709801100270926,
+    "response_class": "keeps",
+    "expected_class": "keeps",
+    "agrees": true,
+    "n": 603,
+    "fraction_above_0_2": 0.16749585406301823,
+    "n_stokes_inequality": 0,
+    "bsdf": {
+      "type": "conductor",
+      "material": "Cu"
+    },
+    "material_family": "conductor",
+    "scene_id": "scene_000000",
+    "camera": {
+      "position": [
+        0.0,
+        -0.55,
+        0.32
+      ],
+      "target": [
+        0.0,
+        0.0,
+        0.18
+      ],
+      "up": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fov_deg": 55.0,
+      "near_clip": 0.01,
+      "far_clip": 100.0
+    },
+    "light": {
+      "position": [
+        0.0,
+        -0.02,
+        0.598
+      ],
+      "target": [
+        0.0,
+        0.0,
+        0.051
+      ],
+      "up": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "size": [
+        0.15,
+        0.15
+      ],
+      "radiance": 18.0
+    },
+    "variant": "cuda_ad_spectral_polarized",
+    "resolution": [
+      256,
+      256
+    ],
+    "spp": 64,
+    "experiment": "z-up sphere qualification"
+  },
+  "roughconductor": {
+    "max_dolp": 0.2454890394053332,
+    "mean_dolp": 0.11007966070449078,
+    "fraction_above_threshold": 0.11020881670533643,
+    "mean_dop": 0.11007966070449078,
+    "response_class": "keeps",
+    "expected_class": "untested",
+    "agrees": true,
+    "n": 862,
+    "fraction_above_0_2": 0.11020881670533643,
+    "n_stokes_inequality": 0,
+    "bsdf": {
+      "type": "roughconductor",
+      "material": "Cu",
+      "distribution": "beckmann",
+      "alpha": 0.1
+    },
+    "material_family": "roughconductor",
+    "scene_id": "scene_000000",
+    "camera": {
+      "position": [
+        0.0,
+        -0.55,
+        0.32
+      ],
+      "target": [
+        0.0,
+        0.0,
+        0.18
+      ],
+      "up": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fov_deg": 55.0,
+      "near_clip": 0.01,
+      "far_clip": 100.0
+    },
+    "light": {
+      "position": [
+        0.0,
+        -0.02,
+        0.598
+      ],
+      "target": [
+        0.0,
+        0.0,
+        0.051
+      ],
+      "up": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "size": [
+        0.15,
+        0.15
+      ],
+      "radiance": 18.0
+    },
+    "variant": "cuda_ad_spectral_polarized",
+    "resolution": [
+      256,
+      256
+    ],
+    "spp": 64,
+    "experiment": "z-up sphere qualification"
+  },
+  "metals": {
+    "conductor_Al": {
+      "max_dolp": 0.14688089347082814,
+      "mean_dolp": 0.04846566191607691,
+      "fraction_above_threshold": 0.0,
+      "mean_dop": 0.04846566191607691,
+      "response_class": "does_not",
+      "expected_class": "keeps",
+      "agrees": false,
+      "n": 603,
+      "fraction_above_0_2": 0.0,
+      "n_stokes_inequality": 0,
+      "bsdf": {
+        "type": "conductor",
+        "material": "Al"
+      },
+      "material_family": "conductor",
+      "scene_id": "scene_000000",
+      "camera": {
+        "position": [
+          0.0,
+          -0.55,
+          0.32
+        ],
+        "target": [
+          0.0,
+          0.0,
+          0.18
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "fov_deg": 55.0,
+        "near_clip": 0.01,
+        "far_clip": 100.0
+      },
+      "light": {
+        "position": [
+          0.0,
+          -0.02,
+          0.598
+        ],
+        "target": [
+          0.0,
+          0.0,
+          0.051
+        ],
+        "up": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "size": [
+          0.15,
+          0.15
+        ],
+        "radiance": 18.0
+      },
+      "variant": "cuda_ad_spectral_polarized",
+      "resolution": [
+        256,
+        256
+      ],
+      "spp": 64,
+      "experiment": "z-up sphere qualification"
+    },
+    "roughconductor_Al": {
+      "max_dolp": 0.150537657493446,
+      "mean_dolp": 0.039568545707222666,
+      "fraction_above_threshold": 0.0,
+      "mean_dop": 0.039568545707222666,
+      "response_class": "does_not",
+      "expected_class": "untested",
+      "agrees": true,
+      "n": 864,
+      "fraction_above_0_2": 0.0,
+      "n_stokes_inequality": 0,
+      "bsdf": {
+        "type": "roughconductor",
+        "material": "Al",
+        "distribution": "beckmann",
+        "alpha": 0.1
+      },
+      "material_family": "roughconductor",
+      "scene_id": "scene_000000",
+      "camera": {
+        "position": [
+          0.0,
+          -0.55,
+          0.32
+        ],
+        "target": [
+          0.0,
+          0.0,
+          0.18
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "fov_deg": 55.0,
+        "near_clip": 0.01,
+        "far_clip": 100.0
+      },
+      "light": {
+        "position": [
+          0.0,
+          -0.02,
+          0.598
+        ],
+        "target": [
+          0.0,
+          0.0,
+          0.051
+        ],
+        "up": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "size": [
+          0.15,
+          0.15
+        ],
+        "radiance": 18.0
+      },
+      "variant": "cuda_ad_spectral_polarized",
+      "resolution": [
+        256,
+        256
+      ],
+      "spp": 64,
+      "experiment": "z-up sphere qualification"
+    },
+    "conductor_Ag": {
+      "max_dolp": 0.039570835434977095,
+      "mean_dolp": 0.021678838381233058,
+      "fraction_above_threshold": 0.0,
+      "mean_dop": 0.021678838381233058,
+      "response_class": "does_not",
+      "expected_class": "keeps",
+      "agrees": false,
+      "n": 603,
+      "fraction_above_0_2": 0.0,
+      "n_stokes_inequality": 0,
+      "bsdf": {
+        "type": "conductor",
+        "material": "Ag"
+      },
+      "material_family": "conductor",
+      "scene_id": "scene_000000",
+      "camera": {
+        "position": [
+          0.0,
+          -0.55,
+          0.32
+        ],
+        "target": [
+          0.0,
+          0.0,
+          0.18
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "fov_deg": 55.0,
+        "near_clip": 0.01,
+        "far_clip": 100.0
+      },
+      "light": {
+        "position": [
+          0.0,
+          -0.02,
+          0.598
+        ],
+        "target": [
+          0.0,
+          0.0,
+          0.051
+        ],
+        "up": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "size": [
+          0.15,
+          0.15
+        ],
+        "radiance": 18.0
+      },
+      "variant": "cuda_ad_spectral_polarized",
+      "resolution": [
+        256,
+        256
+      ],
+      "spp": 64,
+      "experiment": "z-up sphere qualification"
+    },
+    "roughconductor_Ag": {
+      "max_dolp": 0.039588063688137935,
+      "mean_dolp": 0.01860443764672706,
+      "fraction_above_threshold": 0.0,
+      "mean_dop": 0.01860443764672706,
+      "response_class": "does_not",
+      "expected_class": "untested",
+      "agrees": true,
+      "n": 864,
+      "fraction_above_0_2": 0.0,
+      "n_stokes_inequality": 0,
+      "bsdf": {
+        "type": "roughconductor",
+        "material": "Ag",
+        "distribution": "beckmann",
+        "alpha": 0.1
+      },
+      "material_family": "roughconductor",
+      "scene_id": "scene_000000",
+      "camera": {
+        "position": [
+          0.0,
+          -0.55,
+          0.32
+        ],
+        "target": [
+          0.0,
+          0.0,
+          0.18
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "fov_deg": 55.0,
+        "near_clip": 0.01,
+        "far_clip": 100.0
+      },
+      "light": {
+        "position": [
+          0.0,
+          -0.02,
+          0.598
+        ],
+        "target": [
+          0.0,
+          0.0,
+          0.051
+        ],
+        "up": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "size": [
+          0.15,
+          0.15
+        ],
+        "radiance": 18.0
+      },
+      "variant": "cuda_ad_spectral_polarized",
+      "resolution": [
+        256,
+        256
+      ],
+      "spp": 64,
+      "experiment": "z-up sphere qualification"
+    },
+    "conductor_Au": {
+      "max_dolp": 0.19942137556841347,
+      "mean_dolp": 0.10183934620258207,
+      "fraction_above_threshold": 0.0,
+      "mean_dop": 0.10183934620258207,
+      "response_class": "does_not",
+      "expected_class": "keeps",
+      "agrees": false,
+      "n": 603,
+      "fraction_above_0_2": 0.0,
+      "n_stokes_inequality": 0,
+      "bsdf": {
+        "type": "conductor",
+        "material": "Au"
+      },
+      "material_family": "conductor",
+      "scene_id": "scene_000000",
+      "camera": {
+        "position": [
+          0.0,
+          -0.55,
+          0.32
+        ],
+        "target": [
+          0.0,
+          0.0,
+          0.18
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "fov_deg": 55.0,
+        "near_clip": 0.01,
+        "far_clip": 100.0
+      },
+      "light": {
+        "position": [
+          0.0,
+          -0.02,
+          0.598
+        ],
+        "target": [
+          0.0,
+          0.0,
+          0.051
+        ],
+        "up": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "size": [
+          0.15,
+          0.15
+        ],
+        "radiance": 18.0
+      },
+      "variant": "cuda_ad_spectral_polarized",
+      "resolution": [
+        256,
+        256
+      ],
+      "spp": 64,
+      "experiment": "z-up sphere qualification"
+    },
+    "roughconductor_Au": {
+      "max_dolp": 0.21407714149400117,
+      "mean_dolp": 0.08920890729827659,
+      "fraction_above_threshold": 0.004640371229698376,
+      "mean_dop": 0.08920890729827659,
+      "response_class": "keeps",
+      "expected_class": "untested",
+      "agrees": true,
+      "n": 862,
+      "fraction_above_0_2": 0.004640371229698376,
+      "n_stokes_inequality": 0,
+      "bsdf": {
+        "type": "roughconductor",
+        "material": "Au",
+        "distribution": "beckmann",
+        "alpha": 0.1
+      },
+      "material_family": "roughconductor",
+      "scene_id": "scene_000000",
+      "camera": {
+        "position": [
+          0.0,
+          -0.55,
+          0.32
+        ],
+        "target": [
+          0.0,
+          0.0,
+          0.18
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "fov_deg": 55.0,
+        "near_clip": 0.01,
+        "far_clip": 100.0
+      },
+      "light": {
+        "position": [
+          0.0,
+          -0.02,
+          0.598
+        ],
+        "target": [
+          0.0,
+          0.0,
+          0.051
+        ],
+        "up": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "size": [
+          0.15,
+          0.15
+        ],
+        "radiance": 18.0
+      },
+      "variant": "cuda_ad_spectral_polarized",
+      "resolution": [
+        256,
+        256
+      ],
+      "spp": 64,
+      "experiment": "z-up sphere qualification"
+    },
+    "conductor_Cu": {
+      "max_dolp": 0.23824755853963805,
+      "mean_dolp": 0.12709801100270926,
+      "fraction_above_threshold": 0.16749585406301823,
+      "mean_dop": 0.12709801100270926,
+      "response_class": "keeps",
+      "expected_class": "keeps",
+      "agrees": true,
+      "n": 603,
+      "fraction_above_0_2": 0.16749585406301823,
+      "n_stokes_inequality": 0,
+      "bsdf": {
+        "type": "conductor",
+        "material": "Cu"
+      },
+      "material_family": "conductor",
+      "scene_id": "scene_000000",
+      "camera": {
+        "position": [
+          0.0,
+          -0.55,
+          0.32
+        ],
+        "target": [
+          0.0,
+          0.0,
+          0.18
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "fov_deg": 55.0,
+        "near_clip": 0.01,
+        "far_clip": 100.0
+      },
+      "light": {
+        "position": [
+          0.0,
+          -0.02,
+          0.598
+        ],
+        "target": [
+          0.0,
+          0.0,
+          0.051
+        ],
+        "up": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "size": [
+          0.15,
+          0.15
+        ],
+        "radiance": 18.0
+      },
+      "variant": "cuda_ad_spectral_polarized",
+      "resolution": [
+        256,
+        256
+      ],
+      "spp": 64,
+      "experiment": "z-up sphere qualification"
+    },
+    "roughconductor_Cu": {
+      "max_dolp": 0.2454890394053332,
+      "mean_dolp": 0.11007966070449078,
+      "fraction_above_threshold": 0.11020881670533643,
+      "mean_dop": 0.11007966070449078,
+      "response_class": "keeps",
+      "expected_class": "untested",
+      "agrees": true,
+      "n": 862,
+      "fraction_above_0_2": 0.11020881670533643,
+      "n_stokes_inequality": 0,
+      "bsdf": {
+        "type": "roughconductor",
+        "material": "Cu",
+        "distribution": "beckmann",
+        "alpha": 0.1
+      },
+      "material_family": "roughconductor",
+      "scene_id": "scene_000000",
+      "camera": {
+        "position": [
+          0.0,
+          -0.55,
+          0.32
+        ],
+        "target": [
+          0.0,
+          0.0,
+          0.18
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "fov_deg": 55.0,
+        "near_clip": 0.01,
+        "far_clip": 100.0
+      },
+      "light": {
+        "position": [
+          0.0,
+          -0.02,
+          0.598
+        ],
+        "target": [
+          0.0,
+          0.0,
+          0.051
+        ],
+        "up": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "size": [
+          0.15,
+          0.15
+        ],
+        "radiance": 18.0
+      },
+      "variant": "cuda_ad_spectral_polarized",
+      "resolution": [
+        256,
+        256
+      ],
+      "spp": 64,
+      "experiment": "z-up sphere qualification"
+    }
+  },
+  "ior_sweep": [
+    {
+      "max_dolp": 0.9994319831265329,
+      "mean_dolp": 0.11849947418816027,
+      "fraction_above_threshold": 0.11969696969696969,
+      "mean_dop": 0.11849950280988347,
+      "response_class": "keeps",
+      "expected_class": "keeps",
+      "agrees": true,
+      "n": 1320,
+      "fraction_above_0_2": 0.11969696969696969,
+      "n_stokes_inequality": 0,
+      "bsdf": {
+        "type": "dielectric",
+        "int_ior": 1.33,
+        "ext_ior": 1.0
+      },
+      "int_ior": 1.33
+    },
+    {
+      "max_dolp": 0.9991380256624705,
+      "mean_dolp": 0.1751936514547107,
+      "fraction_above_threshold": 0.1998502994011976,
+      "mean_dop": 0.17519368302884702,
+      "response_class": "keeps",
+      "expected_class": "keeps",
+      "agrees": true,
+      "n": 1336,
+      "fraction_above_0_2": 0.1998502994011976,
+      "n_stokes_inequality": 0,
+      "bsdf": {
+        "type": "dielectric",
+        "int_ior": 1.4,
+        "ext_ior": 1.0
+      },
+      "int_ior": 1.4
+    },
+    {
+      "max_dolp": 0.9999997786865131,
+      "mean_dolp": 0.223704189603839,
+      "fraction_above_threshold": 0.2737471952131638,
+      "mean_dop": 0.22370426440354096,
+      "response_class": "keeps",
+      "expected_class": "keeps",
+      "agrees": true,
+      "n": 1337,
+      "fraction_above_0_2": 0.2737471952131638,
+      "n_stokes_inequality": 0,
+      "bsdf": {
+        "type": "dielectric",
+        "int_ior": 1.5,
+        "ext_ior": 1.0
+      },
+      "int_ior": 1.5
+    },
+    {
+      "max_dolp": 0.999756654805028,
+      "mean_dolp": 0.2670480936355876,
+      "fraction_above_threshold": 0.35895522388059703,
+      "mean_dop": 0.26704831183744554,
+      "response_class": "keeps",
+      "expected_class": "keeps",
+      "agrees": true,
+      "n": 1340,
+      "fraction_above_0_2": 0.35895522388059703,
+      "n_stokes_inequality": 0,
+      "bsdf": {
+        "type": "dielectric",
+        "int_ior": 1.6,
+        "ext_ior": 1.0
+      },
+      "int_ior": 1.6
+    },
+    {
+      "max_dolp": 0.9999955146659185,
+      "mean_dolp": 0.28377530781251575,
+      "fraction_above_threshold": 0.4057532172596518,
+      "mean_dop": 0.28377547240579765,
+      "response_class": "keeps",
+      "expected_class": "keeps",
+      "agrees": true,
+      "n": 1321,
+      "fraction_above_0_2": 0.4057532172596518,
+      "n_stokes_inequality": 0,
+      "bsdf": {
+        "type": "dielectric",
+        "int_ior": 1.7,
+        "ext_ior": 1.0
+      },
+      "int_ior": 1.7
+    }
+  ],
+  "roughness_sweep": [
+    {
+      "max_dolp": 0.0,
+      "mean_dolp": 0.0,
+      "fraction_above_threshold": 0.0,
+      "mean_dop": 0.0,
+      "response_class": "does_not",
+      "expected_class": "does_not",
+      "agrees": true,
+      "n": 1339,
+      "fraction_above_0_2": 0.0,
+      "n_stokes_inequality": 0,
+      "bsdf": {
+        "type": "roughdielectric",
+        "int_ior": 1.5,
+        "ext_ior": 1.0,
+        "distribution": "beckmann",
+        "alpha": 0.02
+      },
+      "alpha": 0.02
+    },
+    {
+      "max_dolp": 0.0,
+      "mean_dolp": 0.0,
+      "fraction_above_threshold": 0.0,
+      "mean_dop": 0.0,
+      "response_class": "does_not",
+      "expected_class": "does_not",
+      "agrees": true,
+      "n": 1352,
+      "fraction_above_0_2": 0.0,
+      "n_stokes_inequality": 0,
+      "bsdf": {
+        "type": "roughdielectric",
+        "int_ior": 1.5,
+        "ext_ior": 1.0,
+        "distribution": "beckmann",
+        "alpha": 0.1
+      },
+      "alpha": 0.1
+    },
+    {
+      "max_dolp": 0.0,
+      "mean_dolp": 0.0,
+      "fraction_above_threshold": 0.0,
+      "mean_dop": 0.0,
+      "response_class": "does_not",
+      "expected_class": "does_not",
+      "agrees": true,
+      "n": 1358,
+      "fraction_above_0_2": 0.0,
+      "n_stokes_inequality": 0,
+      "bsdf": {
+        "type": "roughdielectric",
+        "int_ior": 1.5,
+        "ext_ior": 1.0,
+        "distribution": "beckmann",
+        "alpha": 0.2
+      },
+      "alpha": 0.2
+    },
+    {
+      "max_dolp": 0.0,
+      "mean_dolp": 0.0,
+      "fraction_above_threshold": 0.0,
+      "mean_dop": 0.0,
+      "response_class": "does_not",
+      "expected_class": "does_not",
+      "agrees": true,
+      "n": 1359,
+      "fraction_above_0_2": 0.0,
+      "n_stokes_inequality": 0,
+      "bsdf": {
+        "type": "roughdielectric",
+        "int_ior": 1.5,
+        "ext_ior": 1.0,
+        "distribution": "beckmann",
+        "alpha": 0.35
+      },
+      "alpha": 0.35
+    },
+    {
+      "max_dolp": 0.0,
+      "mean_dolp": 0.0,
+      "fraction_above_threshold": 0.0,
+      "mean_dop": 0.0,
+      "response_class": "does_not",
+      "expected_class": "does_not",
+      "agrees": true,
+      "n": 1359,
+      "fraction_above_0_2": 0.0,
+      "n_stokes_inequality": 0,
+      "bsdf": {
+        "type": "roughdielectric",
+        "int_ior": 1.5,
+        "ext_ior": 1.0,
+        "distribution": "beckmann",
+        "alpha": 0.5
+      },
+      "alpha": 0.5
+    }
+  ],
+  "primary_distribution_spp16": {
+    "definition": "Illuminated object pixels: object id 1 and S0 > 1e-4. fraction_above_0_2 uses that count as the denominator. median, p90, and p95 are percentiles of DoLP on the same pixels. Rendered at 256x256, 16 spp, cuda_ad_spectral_polarized, on the published Z-up sphere. These numbers are not the 64 spp profile rows.",
+    "rows": {
+      "dielectric__1.33_": {
+        "max_dolp": 0.9992243388572504,
+        "mean_dolp": 0.0916661084505645,
+        "fraction_above_threshold": 0.08888888888888889,
+        "mean_dop": 0.09166613466994589,
+        "response_class": "keeps",
+        "expected_class": "keeps",
+        "agrees": true,
+        "n": 1260,
+        "median_dolp": 0.03512723729549942,
+        "p90_dolp": 0.18450161849744906,
+        "p95_dolp": 0.4242573170440452,
+        "fraction_above_0_2": 0.08888888888888889,
+        "fraction_denominator": "object pixels with S0 > 1e-4",
+        "n_stokes_inequality": 0,
+        "bsdf": {
+          "type": "dielectric",
+          "int_ior": 1.33,
+          "ext_ior": 1.0
+        },
+        "resolution": [
+          256,
+          256
+        ],
+        "spp": 16,
+        "note": "distribution on the published Z-up sphere, object id 1, S0 > 1e-4"
+      },
+      "dielectric__1.4_": {
+        "max_dolp": 0.9999994714044805,
+        "mean_dolp": 0.13462909833996006,
+        "fraction_above_threshold": 0.1530448717948718,
+        "mean_dop": 0.1346291027808113,
+        "response_class": "keeps",
+        "expected_class": "keeps",
+        "agrees": true,
+        "n": 1248,
+        "median_dolp": 0.045396952544252675,
+        "p90_dolp": 0.32704691450471063,
+        "p95_dolp": 0.8758990376948629,
+        "fraction_above_0_2": 0.1530448717948718,
+        "fraction_denominator": "object pixels with S0 > 1e-4",
+        "n_stokes_inequality": 0,
+        "bsdf": {
+          "type": "dielectric",
+          "int_ior": 1.4,
+          "ext_ior": 1.0
+        },
+        "resolution": [
+          256,
+          256
+        ],
+        "spp": 16,
+        "note": "distribution on the published Z-up sphere, object id 1, S0 > 1e-4"
+      },
+      "dielectric__1.5_": {
+        "max_dolp": 0.9999986016595241,
+        "mean_dolp": 0.1870104048701494,
+        "fraction_above_threshold": 0.24151857835218093,
+        "mean_dop": 0.1870104667846408,
+        "response_class": "keeps",
+        "expected_class": "keeps",
+        "agrees": true,
+        "n": 1238,
+        "median_dolp": 0.07078727061060698,
+        "p90_dolp": 0.7427700291987916,
+        "p95_dolp": 0.9521979175281327,
+        "fraction_above_0_2": 0.24151857835218093,
+        "fraction_denominator": "object pixels with S0 > 1e-4",
+        "n_stokes_inequality": 0,
+        "bsdf": {
+          "type": "dielectric",
+          "int_ior": 1.5,
+          "ext_ior": 1.0
+        },
+        "resolution": [
+          256,
+          256
+        ],
+        "spp": 16,
+        "note": "distribution on the published Z-up sphere, object id 1, S0 > 1e-4"
+      },
+      "dielectric__1.6_": {
+        "max_dolp": 0.9998371008842684,
+        "mean_dolp": 0.23428511363729887,
+        "fraction_above_threshold": 0.32312651087832395,
+        "mean_dop": 0.2342860696187715,
+        "response_class": "keeps",
+        "expected_class": "keeps",
+        "agrees": true,
+        "n": 1241,
+        "median_dolp": 0.09709916456047989,
+        "p90_dolp": 0.8634021349528285,
+        "p95_dolp": 0.9597694092466259,
+        "fraction_above_0_2": 0.32312651087832395,
+        "fraction_denominator": "object pixels with S0 > 1e-4",
+        "n_stokes_inequality": 0,
+        "bsdf": {
+          "type": "dielectric",
+          "int_ior": 1.6,
+          "ext_ior": 1.0
+        },
+        "resolution": [
+          256,
+          256
+        ],
+        "spp": 16,
+        "note": "distribution on the published Z-up sphere, object id 1, S0 > 1e-4"
+      },
+      "dielectric__1.7_": {
+        "max_dolp": 0.9999728814143242,
+        "mean_dolp": 0.25844471179258977,
+        "fraction_above_threshold": 0.37479541734860883,
+        "mean_dop": 0.2584448985169431,
+        "response_class": "keeps",
+        "expected_class": "keeps",
+        "agrees": true,
+        "n": 1222,
+        "median_dolp": 0.12192311548969567,
+        "p90_dolp": 0.8698265598501099,
+        "p95_dolp": 0.9593450505783866,
+        "fraction_above_0_2": 0.37479541734860883,
+        "fraction_denominator": "object pixels with S0 > 1e-4",
+        "n_stokes_inequality": 0,
+        "bsdf": {
+          "type": "dielectric",
+          "int_ior": 1.7,
+          "ext_ior": 1.0
+        },
+        "resolution": [
+          256,
+          256
+        ],
+        "spp": 16,
+        "note": "distribution on the published Z-up sphere, object id 1, S0 > 1e-4"
+      },
+      "pplastic__1.5_0.1": {
+        "max_dolp": 0.8061660142463529,
+        "mean_dolp": 0.09775663344363843,
+        "fraction_above_threshold": 0.13653136531365315,
+        "mean_dop": 0.09775663344363843,
+        "response_class": "keeps",
+        "expected_class": "keeps",
+        "agrees": true,
+        "n": 1355,
+        "median_dolp": 0.06083905691402228,
+        "p90_dolp": 0.2304331321422998,
+        "p95_dolp": 0.313576536907248,
+        "fraction_above_0_2": 0.13653136531365315,
+        "fraction_denominator": "object pixels with S0 > 1e-4",
+        "n_stokes_inequality": 0,
+        "bsdf": {
+          "type": "pplastic",
+          "int_ior": 1.5,
+          "ext_ior": 1.0,
+          "diffuse_reflectance": 0.5,
+          "alpha": 0.1
+        },
+        "resolution": [
+          256,
+          256
+        ],
+        "spp": 16,
+        "note": "distribution on the published Z-up sphere, object id 1, S0 > 1e-4"
+      },
+      "conductor_Cu__": {
+        "max_dolp": 0.2714349359459393,
+        "mean_dolp": 0.1272524259503754,
+        "fraction_above_threshold": 0.16382252559726962,
+        "mean_dop": 0.1272524259503754,
+        "response_class": "keeps",
+        "expected_class": "keeps",
+        "agrees": true,
+        "n": 586,
+        "median_dolp": 0.12726305175420283,
+        "p90_dolp": 0.21424170572712747,
+        "p95_dolp": 0.2253184234642841,
+        "fraction_above_0_2": 0.16382252559726962,
+        "fraction_denominator": "object pixels with S0 > 1e-4",
+        "n_stokes_inequality": 0,
+        "bsdf": {
+          "type": "conductor",
+          "material": "Cu"
+        },
+        "resolution": [
+          256,
+          256
+        ],
+        "spp": 16,
+        "note": "distribution on the published Z-up sphere, object id 1, S0 > 1e-4"
+      },
+      "roughconductor_Cu__0.1": {
+        "max_dolp": 0.2789004011477824,
+        "mean_dolp": 0.11028630173294338,
+        "fraction_above_threshold": 0.11320754716981132,
+        "mean_dop": 0.11028630173294338,
+        "response_class": "keeps",
+        "expected_class": "untested",
+        "agrees": true,
+        "n": 795,
+        "median_dolp": 0.09537841325633645,
+        "p90_dolp": 0.20389594860651927,
+        "p95_dolp": 0.2139782575161486,
+        "fraction_above_0_2": 0.11320754716981132,
+        "fraction_denominator": "object pixels with S0 > 1e-4",
+        "n_stokes_inequality": 0,
+        "bsdf": {
+          "type": "roughconductor",
+          "material": "Cu",
+          "distribution": "beckmann",
+          "alpha": 0.1
+        },
+        "resolution": [
+          256,
+          256
+        ],
+        "spp": 16,
+        "note": "distribution on the published Z-up sphere, object id 1, S0 > 1e-4"
+      },
+      "roughconductor_Au__0.1": {
+        "max_dolp": 0.2531909662505001,
+        "mean_dolp": 0.08924109569385265,
+        "fraction_above_threshold": 0.0075282308657465494,
+        "mean_dop": 0.08924109569385265,
+        "response_class": "keeps",
+        "expected_class": "untested",
+        "agrees": true,
+        "n": 797,
+        "median_dolp": 0.07880629164507953,
+        "p90_dolp": 0.16350048544871076,
+        "p95_dolp": 0.17711323536533924,
+        "fraction_above_0_2": 0.0075282308657465494,
+        "fraction_denominator": "object pixels with S0 > 1e-4",
+        "n_stokes_inequality": 0,
+        "bsdf": {
+          "type": "roughconductor",
+          "material": "Au",
+          "distribution": "beckmann",
+          "alpha": 0.1
+        },
+        "resolution": [
+          256,
+          256
+        ],
+        "spp": 16,
+        "note": "distribution on the published Z-up sphere, object id 1, S0 > 1e-4"
+      },
+      "roughdielectric_1.5_0.1": {
+        "max_dolp": 0.0,
+        "mean_dolp": 0.0,
+        "fraction_above_threshold": 0.0,
+        "mean_dop": 0.0,
+        "response_class": "does_not",
+        "expected_class": "does_not",
+        "agrees": true,
+        "n": 1300,
+        "median_dolp": 0.0,
+        "p90_dolp": 0.0,
+        "p95_dolp": 0.0,
+        "fraction_above_0_2": 0.0,
+        "fraction_denominator": "object pixels with S0 > 1e-4",
+        "n_stokes_inequality": 0,
+        "bsdf": {
+          "type": "roughdielectric",
+          "int_ior": 1.5,
+          "ext_ior": 1.0,
+          "distribution": "beckmann",
+          "alpha": 0.1
+        },
+        "resolution": [
+          256,
+          256
+        ],
+        "spp": 16,
+        "note": "Mitsuba 3.9.1 polarized render on this sphere. Zero DoLP here is not a claim about every rough dielectric."
+      }
+    }
+  }
+}

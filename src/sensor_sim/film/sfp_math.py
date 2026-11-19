@@ -188,7 +188,10 @@ def mean_angular_error_deg(prediction: np.ndarray, truth: np.ndarray, mask: np.n
 
 # Same cutoffs as SfPUEL's ``normal_criterion.py``. The comparison is strict.
 ANGLE_CUTOFFS_DEG = (11.25, 22.5, 30.0)
-MIN_FREE_BYTES = 8 * (1024**3)
+# fp32 weight, gradient, and the two Adam moments.
+PARAMETER_STATE_BYTES = 16
+# Activations for a 256^2 crop in a batch of 4. This is the space check, not an 8 GiB gate.
+ACTIVATION_ALLOWANCE_BYTES = 1024**3
 
 
 def angle_fractions(degrees: np.ndarray) -> dict:
@@ -240,19 +243,111 @@ def mean_abs_s3_over_s0(s3: np.ndarray, s0: np.ndarray, mask: np.ndarray) -> flo
     return float(np.mean(np.abs(np.asarray(s3, dtype=np.float64)[chosen]) / np.asarray(s0, dtype=np.float64)[chosen]))
 
 
-def choose_device(cuda_available: bool, free_bytes: int | None, minimum_bytes: int = MIN_FREE_BYTES) -> tuple[str, str]:
-    """GPU when Torch can see CUDA and at least ``minimum_bytes`` are free. Otherwise CPU.
+def batch_floor_bytes(n_parameters: int, activation_bytes: int = ACTIVATION_ALLOWANCE_BYTES) -> int:
+    """Bytes one Adam step needs: parameter state plus the activation allowance.
 
-    Nothing is killed to free the GPU. ``free_bytes`` is what
-    ``torch.cuda.mem_get_info`` reports, or None when that cannot be read.
+    ``n_parameters`` is the trained scalar count. Each scalar keeps an fp32
+    weight, a gradient, and two Adam moments, which is 16 bytes. The activation
+    allowance is a fixed 1 GiB for a 256^2 batch of 4. A card with more free
+    memory than this floor is used.
     """
+    if int(n_parameters) < 1:
+        raise ValueError(f"n_parameters must be positive, got {n_parameters}")
+    return int(n_parameters) * PARAMETER_STATE_BYTES + int(activation_bytes)
+
+
+def release_render_caches() -> str:
+    """Drop Mitsuba's cached buffers. This does not import Torch.
+
+    Importing Torch while Mitsuba is still rendering can reset the CUDA context.
+    The Torch cache is emptied later, in ``release_gpu_caches``, after the frames.
+    """
+    import gc
+
+    gc.collect()
+    notes = ["gc=collected"]
+    try:
+        import drjit as dr
+
+        flush = getattr(dr, "flush_malloc_cache", None)
+        if flush is not None:
+            flush()
+        sync = getattr(dr, "sync_thread", None)
+        if sync is not None:
+            sync()
+        notes.append("drjit_cache=flushed")
+    except Exception as exc:
+        notes.append(f"drjit_cache=skipped error={type(exc).__name__}")
+    return " ".join(notes)
+
+
+def release_gpu_caches() -> str:
+    """Flush Dr.Jit, then the Torch cache when Torch is already imported.
+
+    Call this after the renders, when the free-memory read is about to run.
+    Nothing else on the machine is killed.
+    """
+    notes = [release_render_caches()]
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            notes.append("torch_cache=emptied")
+        else:
+            notes.append("torch_cache=cuda_unavailable")
+    except Exception as exc:
+        notes.append(f"torch_cache=skipped error={type(exc).__name__}")
+    return " ".join(notes)
+
+
+def choose_device(cuda_available: bool, free_bytes: int | None, minimum_bytes: int) -> tuple[str, str]:
+    """GPU when CUDA works, unless the flush left fewer bytes than the batch floor.
+
+    A missing free-memory reading does not select the CPU: CUDA is still used,
+    and the caller logs that the reading failed. Nothing is killed to free the GPU.
+    """
+    floor = int(minimum_bytes)
     if not cuda_available:
         return "cpu", "torch.cuda.is_available() is false"
     if free_bytes is None:
-        return "cpu", "free GPU memory could not be read"
-    if int(free_bytes) < int(minimum_bytes):
-        return "cpu", f"free GPU memory {int(free_bytes)} bytes is below {int(minimum_bytes)} bytes"
-    return "cuda", "torch.cuda.is_available() and at least 8 GiB is free"
+        return "cuda", "free GPU memory could not be read; CUDA is available"
+    if int(free_bytes) < floor:
+        return (
+            "cpu",
+            f"after flush, free GPU memory {int(free_bytes)} bytes is below the batch floor {floor} bytes",
+        )
+    return "cuda", f"after flush, free GPU memory {int(free_bytes)} bytes covers the batch floor {floor} bytes"
+
+
+def select_torch_device(n_parameters: int) -> tuple[str, str, dict]:
+    """Flush, read free memory, and choose cuda or cpu for ``n_parameters``."""
+    import torch
+
+    release_note = release_gpu_caches()
+    floor = batch_floor_bytes(n_parameters)
+    available = bool(torch.cuda.is_available())
+    free = None
+    total = None
+    if available:
+        try:
+            free_raw, total_raw = torch.cuda.mem_get_info()
+            free, total = int(free_raw), int(total_raw)
+        except Exception:
+            free, total = None, None
+    device, reason = choose_device(available, free, floor)
+    info = {
+        "selected": device,
+        "reason": reason,
+        "torch_version": torch.__version__,
+        "cuda_available": available,
+        "free_bytes": free,
+        "total_bytes": total,
+        "batch_floor_bytes": floor,
+        "n_parameters": int(n_parameters),
+        "release": release_note,
+    }
+    return device, reason, info
 
 
 def object_pixel_mask(shape_index: np.ndarray, object_indices: set[int], s0: np.ndarray) -> np.ndarray:

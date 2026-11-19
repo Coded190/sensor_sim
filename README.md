@@ -4,7 +4,7 @@ Phase 0 replicates Mitsuba 3's quickstart, the polarized Cornell box, and the di
 
 ## Setup
 
-The project uses [uv](https://docs.astral.sh/uv/). Mitsuba and Dr.Jit are already pinned in `uv.lock`.
+The project uses [uv](https://docs.astral.sh/uv/). Mitsuba and Dr.Jit are pinned in `uv.lock`. `uv sync` installs `torch==2.15.0` from the CUDA 13.2 index `https://download.pytorch.org/whl/cu132`, which is the `2.15.0+cu132` wheel. A machine that needs the CPU wheel changes that index URL to `https://download.pytorch.org/whl/cpu` and runs `uv lock` again.
 
 ```bash
 uv sync
@@ -148,7 +148,7 @@ Blender is not in apt without a password on this machine. The binary in use is t
 
 The current scene is an open-front box, Z-up, in meters. The camera is at `(0, -0.55, 0.32)`, looking toward +Y, with a 55° field of view. From that view the left wall (`-X`) is diffuse red `(0.63, 0.06, 0.04)`, the right wall is diffuse green `(0.15, 0.45, 0.09)`, and the back wall is diffuse blue `(0.15, 0.25, 0.65)`. The floor and ceiling are gray diffuse reflectance 0.8. The front wall is omitted. A 0.12 m by 0.12 m pedestal, 0.04 m tall and diffuse yellow `(0.76, 0.64, 0.08)`, lifts the ball. The YAML radius 0.05 m is still the outer film surface. The plastic sphere stops 20 µm inside that, the cap covers 0.45 of the sphere, and the cap axis points toward the camera. The shell is smooth dielectric, interior IOR 1.50, exterior IOR 1.0, roughness 0. The ball is diffuse reflectance 0.5. These material numbers are provisional. Beside the pedestal, on the green side, is the Stanford `dragon_vrip_res4` reconstruction from the Stanford 3D Scanning Repository (Graphics Laboratory, August 1996), scaled to 0.12 m tall and shaded diffuse red `(0.70, 0.05, 0.04)`. The scan is stored in `assets/dragon/`. `lighting.intensity` is Mitsuba area-emitter radiance in W/sr/m². The lamp is a 0.15 m ceiling rectangle at radiance 10. Blender stores the matching power, π · width · height · intensity watts. OBJ files include one averaged normal per vertex. The blend assigns a Principled transmission shader to the film. That shader is a viewport stand-in. Blender does not run Mitsuba's polarized dielectric. The viewport uses AgX at exposure +2. The PNG uses `mapped = (4 * linear) / (1 + 4 * linear)` and then `clip(mapped, 0, 1) ** (1/2.2)`. The EXR stays linear. The display frame is `outputs/film/sample_000001/rgb.png`. On that frame the geometry mask has 5330 film pixels and mean film S0 is 0.00922608.
 
-The earlier lamp at `(1, 1, 2)`, 0.2 m by 0.2 m, left mean film S0 at 0.00318666. With the lamp beside the camera, mean film S0 is 0.0602642. A bare diffuse ball in that same light has median linear radiance about 0.51, and the walls about 0.73. The filmed ball's median is about 0.041. Normal-incidence Fresnel reflectance at IOR 1.5 is `((1.5-1)/(1.5+1))^2 = 0.04`, so the cap is mostly a dark reflection of the room plus a small lamp image. Raising the radiance scales the ball and the walls together, and the walls reach 1 first. The 12-image dataset and the U-Net numbers below were rendered with the earlier lamp and have not been regenerated. `elapsed_s` is the wall time of `mi.render` through the NumPy copy. The 512×512 Stokes frame, 64 samples, took 0.918 s on `llvm_ad_spectral_polarized`. No CUDA variant is called.
+The earlier lamp at `(1, 1, 2)`, 0.2 m by 0.2 m, left mean film S0 at 0.00318666. With the lamp beside the camera, mean film S0 is 0.0602642. A bare diffuse ball in that same light has median linear radiance about 0.51, and the walls about 0.73. The filmed ball's median is about 0.041. Normal-incidence Fresnel reflectance at IOR 1.5 is `((1.5-1)/(1.5+1))^2 = 0.04`, so the cap is mostly a dark reflection of the room plus a small lamp image. Raising the radiance scales the ball and the walls together, and the walls reach 1 first. The 12-image dataset and the U-Net numbers below were rendered with the earlier lamp and have not been regenerated. `elapsed_s` is the wall time of `mi.render` through the NumPy copy. The 512×512 Stokes frame, 64 samples, took 0.918 s on `llvm_ad_spectral_polarized`. That recorded frame is the LLVM render. `configs/film/rendering.yaml` now names `cuda_ad_spectral_polarized` and `cuda_ad_mono_polarized`.
 
 The film mesh is 160 rings by 512 segments around the axis. A coarser cap let the ball poke through the triangle centers, because the sagitta was larger than the 20 µm thickness, and the mask came out speckled. At this density the sagitta is about 1 µm. On the earlier close-up camera that mask had 23951 film pixels and 640 edge pixels, one contour. The Cornell frame above is the same mesh seen from farther away, so the pixel count is 5330.
 
@@ -167,7 +167,7 @@ The dataset is 12 images in `outputs/film/dataset`. Train has 7, validation 2, t
 
 Both networks are `FilmUNet`: four 2×2 pools, base width 32, channels 32, 64, 128, 256, bottleneck 512, two 3×3 convolutions with batch norm and ReLU in each block, skip concatenation, and a 1×1 logit. A parameter is one trained scalar, including batch-norm scale and shift. Model A has 7765985 parameters. Model B has 7767137. The difference is the 1152 weights in the first convolution, `(7 − 3) × 32 × 9`.
 
-Training is CPU-only, PyTorch 2.15.0+cpu, `CUDA_VISIBLE_DEVICES` empty. Adam, learning rate 0.001, betas 0.9 and 0.999, weight decay 0, batch size 2, 40 epochs, seed 0, no augmentation. The loss is half BCE-with-logits and half Dice, with Dice smooth constant 1. Inputs are standardized by the training-pixel mean and NumPy standard deviation (divide by N). The film fraction on the training pixels is 148299 / 1835008 = 0.080817, above 0.05, so BCE has no positive-class weight. A prediction is film when the sigmoid probability is above 0.5. The test checkpoint is the epoch with the highest validation mean IoU: epoch 3 for Model A (validation IoU 0.897428) and epoch 10 for Model B (validation IoU 0.924666). Later epochs keep lowering the training loss and the validation IoU falls toward 0, so the last epoch is not the reported model. One epoch takes about 5 s.
+The IoU table below was measured on CPU with PyTorch 2.15.0+cpu. The trainer no longer clears `CUDA_VISIBLE_DEVICES`. It flushes the Dr.Jit and Torch caches and uses CUDA when `torch.cuda.is_available()` and the free bytes cover the batch floor: 16 bytes per parameter for the fp32 weight, gradient, and two Adam moments, plus 1 GiB for a 256² batch of 4. The CPU is used when CUDA is missing or the free bytes after that flush are below the floor. Nothing else on the machine is killed. This checkout did not repeat the 40 epochs, so the table remains the historical CPU measurement. The schedule of that measurement was Adam, learning rate 0.001, betas 0.9 and 0.999, weight decay 0, batch size 2, 40 epochs, seed 0, no augmentation. The loss is half BCE-with-logits and half Dice, with Dice smooth constant 1. Inputs are standardized by the training-pixel mean and NumPy standard deviation (divide by N). The film fraction on the training pixels is 148299 / 1835008 = 0.080817, above 0.05, so BCE has no positive-class weight. A prediction is film when the sigmoid probability is above 0.5. The test checkpoint is the epoch with the highest validation mean IoU: epoch 3 for Model A (validation IoU 0.897428) and epoch 10 for Model B (validation IoU 0.924666). Later epochs keep lowering the training loss and the validation IoU falls toward 0, so the last epoch is not the reported model. One epoch takes about 5 s.
 
 IoU is TP / (TP + FP + FN) per image. Precision is TP / (TP + FP). Recall is TP / (TP + FN). An image with no positive label and no positive prediction scores 1. A zero denominator otherwise scores 0. The headline is the mean of the 3 test images. The standard deviation is NumPy's, divide by N. With 3 images that std is a description of this set, not a sampling error from a large test.
 
@@ -186,11 +186,11 @@ Per test image, IoU / precision / recall, copied from `metrics.json`:
 
 On these three images, adding the analyzers does not raise mean IoU. It raises recall and lowers precision. The low-coverage sphere is the image that drops: Model B's recall is 1 and its precision equals its IoU, so the error is extra film around the cap. DoLP on that frame is bright at the silhouette of the whole ball, which is a larger region than the 0.15 cap. The high-coverage sphere and the ellipsoid both gain IoU. `outputs/film/eval/comparison.png` is the bar chart. `outputs/film/eval/sample_000010_sphere_cov15.png` and `sample_000012_ellipsoid_cov45.png` show RGB, the four analyzers, DoLP, AoLP, the mask, both predictions, and the error maps. The full numbers are `outputs/film/eval/metrics.json`.
 
-This is a 12-image CPU probe. It is not a sim-to-real result. The film is a smooth constant-IOR shell, the analyzers are noiseless, and S3 is not an input.
+This is a 12-image probe measured on the CPU. It is not a sim-to-real result. The film is a smooth constant-IOR shell, the analyzers are noiseless, and S3 is not an input.
 
 ## Shape from polarization
 
-`uv run film-sfp` renders two views of two scenes with `cuda_ad_spectral_polarized` and fits camera-frame shading normals. Mean angular error is the mean, over pixels in one region with S0 > 1e-4 and a unit normal, of `arccos(clip(dot(prediction, truth), -1, 1))` in degrees. The truth is the Mitsuba shading normal `nn`, rotated into the camera and pointed back at the camera. View A is the only training view. View B is a sideways camera of the same objects. The loss is the mean of `1 - dot(prediction, truth)` on object pixels. Wall pixels are left out of the loss. Training is 20 epochs, 4 steps per epoch, batch 4 crops of 256², Adam, learning rate 0.001, seed 0, CPU. The three inputs are Stokes plus DoLP plus `cos(2 AoLP)` and `sin(2 AoLP)`, the four ideal analyzers, and linear RGB. Each also gets the per-pixel view direction. AoLP is `0.5 * arctan2(S2, S1)`, stored as 0 where DoLP < 0.05.
+The tables in this section are the previous gray-ball and Cornell run. `run_previous_sfp` is that entry point. `uv run film-sfp` now runs the held-out experiments in the next section. The previous run rendered two views of two scenes with `cuda_ad_spectral_polarized` and fit camera-frame shading normals. Mean angular error is the mean, over pixels in one region with S0 > 1e-4 and a unit normal, of `arccos(clip(dot(prediction, truth), -1, 1))` in degrees. The truth is the Mitsuba shading normal `nn`, rotated into the camera and pointed back at the camera. View A is the only training view. View B is a sideways camera of the same objects. The loss is the mean of `1 - dot(prediction, truth)` on object pixels. Wall pixels are left out of the loss. That training was 20 epochs, 4 steps per epoch, batch 4 crops of 256², Adam, learning rate 0.001, seed 0, on the CPU. The three inputs are Stokes plus DoLP plus `cos(2 AoLP)` and `sin(2 AoLP)`, the four ideal analyzers, and linear RGB. Each also gets the per-pixel view direction. AoLP is `0.5 * arctan2(S2, S1)`, stored as 0 where DoLP < 0.05.
 
 The standard scene is one opaque `pplastic` ball, interior IOR 1.5, exterior IOR 1.0, diffuse reflectance 0.5, Beckmann alpha 0.1, in a gray room of reflectance 0.6. The ball covers 111091 / 262144 = 0.4238 of view A and 86317 / 262144 = 0.3293 of view B. Max DoLP on the ball is 0.819473 on view A. The Fresnel baseline uses the diffuse branch, so the azimuth equals AoLP, and it takes the smaller zenith when the curve has two matches. The oracle also tries azimuth + π and keeps the candidate closer to the truth. That oracle is not the baseline.
 
@@ -223,7 +223,7 @@ On the held-out Cornell camera, Stokes stays ahead of RGB on the film (7.212° a
 
 ## Held-out filmed shapes
 
-`uv run film-sfp` runs the two experiments below. `uv run film-sfp 01` and `uv run film-sfp 02` run one of them. The numeric tables are written by that command into `outputs/film/sfp/01_cornell_film/summary.json` and `outputs/film/sfp/02_heldout_shapes/summary.json`. This checkout does not contain those tables. The renders and the training are meant to run on a machine whose GPU is free. The previous `outputs/film/sfp/summary.json` is left as it is.
+`uv run film-sfp` runs the two experiments below. `uv run film-sfp 01` and `uv run film-sfp 02` run one of them. The numeric tables are copied from `outputs/film/sfp/01_cornell_film/summary.json` and `outputs/film/sfp/02_heldout_shapes/summary.json`. The earlier gray-ball summary file `outputs/film/sfp/summary.json` is not in this checkout; its numbers are the tables in the previous section.
 
 Both experiments use `cuda_ad_spectral_polarized`, 512², 64 samples, seed 0, and a maximum path depth of 8. The lamp is the near ceiling rectangle and it is unpolarized. There is no polarizer and no quarter-wave plate. Experiment 01 keeps the Cornell lamp from `configs/film/scene.yaml` (radiance 10). Experiment 02 uses the gray-room rectangle at radiance 18 and aims it at a fixed point, so the lamp does not turn toward each object. A polarized source is a later experiment.
 
@@ -231,15 +231,9 @@ The loss, the error PNGs, and every reported angle use the outer film only. A pi
 
 Mean angular error is the mean of `arccos(clip(dot(prediction, truth), -1, 1))` in degrees on those pixels. The median is the median of the same angles. The three fractions are the share of those angles strictly below 11.25°, 22.5°, and 30°. The comparison is `<`, the same cutoff SfPUEL's `normal_criterion.py` uses. Experiment 02 reports each test shape and the unweighted mean of the ten shape scores. A larger film does not count more than a smaller one. The Fresnel baseline is the specular branch on the film, azimuth = AoLP + π/2, and it keeps the smaller zenith. The oracle, which also tries azimuth + π, is labeled separately and is not the baseline. S3 is saved in `measurement.npz` and drawn as `s3.png`. The summary reports the mean of `|S3| / S0` on the same film pixels. S3 is not a network input.
 
-Training starts after that experiment's renders. If `torch.cuda.is_available()` and `torch.cuda.mem_get_info` reports at least 8 GiB free, training uses that GPU. Otherwise it uses the CPU and the log says why. Nothing else on the machine is killed. The mask trainer is still CPU-only: `src/sensor_sim/film/train.py` clears `CUDA_VISIBLE_DEVICES` before it imports Torch, and the shape job does not import that module.
+Training starts after that experiment's renders. The job flushes the Dr.Jit cache and, once Torch is imported, the Torch cache, then reads `torch.cuda.mem_get_info`. CUDA is used when it is available and the free bytes cover the batch floor. The floor is 16 bytes per parameter (fp32 weight, gradient, and two Adam moments) plus 1 GiB for the 256² batch of 4. A failed free-memory read does not by itself select the CPU. The CPU is used when CUDA is missing or the free bytes after the flush are below the floor. Nothing else on the machine is killed. The mask trainer uses the same helper and moves the network with `.to(device)`. It does not clear `CUDA_VISIBLE_DEVICES`.
 
-`uv.lock` installs the CPU build of Torch 2.15. On the GPU machine, after `uv sync` and before `uv run film-sfp`, install the CUDA 13.2 wheel that matches this Torch release:
-
-```bash
-uv pip install --reinstall torch==2.15.0 --index-url https://download.pytorch.org/whl/cu132
-```
-
-Do not run `uv sync` again before the job, or it will put the CPU wheel back. The driver has to support CUDA 13.2. Torch 2.15 does not publish a cu128 wheel. The log line `sfp stage=device selected=` records which device the run actually used.
+This run used `torch 2.15.0+cu132` on an RTX 5080. Both experiments logged `sfp stage=device selected=cuda` and `sfp stage=render variant=cuda_ad_spectral_polarized`. The parameter device was `cuda:0`. The Stokes network has 7767779 parameters, so the batch floor is `16 * 7767779 + 1024**3 = 1198026288` bytes. After the flush, experiment 01 had 13780451328 bytes free of 16600662016, and experiment 02 had 13717536768 bytes free. Both were above the floor. The reason string in each summary is `after flush, free GPU memory <free> bytes covers the batch floor 1198026288 bytes`.
 
 The schedule is 20 epochs, Adam, learning rate 0.001, betas 0.9 and 0.999, weight decay 0, seed 0. Experiment 02 draws one 256² crop from each of the 50 training images per epoch and groups them in batches of 4. The last batch has the remaining 2 images. Experiment 01 has only view A, so each epoch draws 4 crops of that one frame and the batch stays 4. A single crop would make BatchNorm see a batch of 1. Every crop is placed so that it contains a film pixel. Inputs are standardized by the mean and NumPy standard deviation (divide by N) of the training film pixels. Evaluation runs the network in eval mode on the full 512² frame, so BatchNorm uses its running statistics.
 
@@ -255,5 +249,57 @@ The 50 training shapes are 4 spheres, 8 ellipsoids, 8 rounded boxes, 6 capsules,
 
 Every render folder gets `rgb.png`, `normal_gt.png`, `dolp.png`, `aolp.png`, and `s3.png`. After training it also gets `normal_stokes.png`, `error_stokes.png`, and the same pair for the analyzer network, the RGB network, and the specular Fresnel baseline.
 
-SfPUEL's archives were not downloaded. The training zip is about 20,000 Mitsuba 2 environment-map renders of bare objects, including metal, with no polyethylene film. The test archive stores four polarizer PNGs as relative 8-bit or 16-bit intensities, with no linear Stokes vector and no S3, and it scores an object mask. Those images are not a filmed-gripper test. The angle columns use their cutoffs so a later table can be read beside theirs. The pixels and the lighting remain ours.
+The angle columns below are copied from the summary JSON. Mean angular error is the mean, over film pixels with S0 > 1e-4 and a unit normal, of `arccos(clip(dot(prediction, truth), -1, 1))` in degrees. The median is the median of those same angles. Each fraction is the share of those angles strictly below the cutoff. Experiment 02's headline is the unweighted mean of the ten shape scores: each shape counts once, so a larger film does not outweigh a smaller one. `mean |S3| / S0` is the mean of `|S3| / S0` on film pixels with S0 > 1e-4. That set is not the same as the angular-error set, because the circular measure does not also require a unit normal. S3 is stored in `measurement.npz` and drawn in `s3.png`. It is not a channel of the Stokes, analyzer, or RGB networks. Recomputing `|S3| / S0` from `test/001_ellipsoid/measurement.npz` matched the summary value `4.2221922217841003e-10`. The ten-shape means below match a fresh mean of the ten rows.
+
+### 01_cornell_film scores
+
+Film pixels are 5330 on view A and 4631 on view B. The angular scores use 4481 and 3890 of those pixels, the ones with S0 > 1e-4 and a unit normal. `mean |S3| / S0` is `1.0074533433504822e-05` on view A and `3.188330336009781e-05` on view B.
+
+| Model | View | MAE deg | Median deg | < 11.25 | < 22.5 | < 30 |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Stokes | A | 24.848990220289252 | 25.38023648268922 | 0.1758536041062263 | 0.4447667931265343 | 0.5909395224280295 |
+| Stokes | B | 27.660679351547188 | 27.852423784392645 | 0.1781491002570694 | 0.41259640102827766 | 0.5344473007712083 |
+| Analyzers | A | 35.696243304815425 | 33.351355151351775 | 0.03592948002677974 | 0.22829725507699175 | 0.40660566837759426 |
+| Analyzers | B | 43.30241771636119 | 42.40757096848658 | 0.01696658097686375 | 0.08431876606683805 | 0.2051413881748072 |
+| RGB | A | 15.969971655024931 | 14.350972627757667 | 0.3028341887971435 | 0.8147734880607007 | 0.9442088819459942 |
+| RGB | B | 19.41748053699625 | 18.366822741223075 | 0.11208226221079691 | 0.7203084832904885 | 0.9118251928020565 |
+| Fresnel specular | A | 65.43652090287534 | 64.3903357147398 | 0.05445213122070966 | 0.12006248605222049 | 0.17139031466190582 |
+| Fresnel specular | B | 64.15258447115829 | 63.13974193555668 | 0.055526992287917736 | 0.12133676092544987 | 0.17712082262210796 |
+| Fresnel oracle | A | 39.05254210684998 | 39.47359881004632 | 0.11604552555233207 | 0.2553001562151305 | 0.3673287212675742 |
+| Fresnel oracle | B | 38.70393587490861 | 38.463293643514916 | 0.12287917737789203 | 0.2647814910025707 | 0.36966580976863755 |
+
+The summary has no key for the copper mesh. On this Cornell film, RGB's mean angular error is lower than Stokes on both cameras. The specular Fresnel baseline stays near 65°.
+
+### 02_heldout_shapes scores
+
+The smallest rendered film fraction was the training cone `039_cone`, 70457 / 262144 = 0.2687721252441406. Every one of the 60 frames is above 0.15. The test seeds are disjoint from the training seeds, and none of the test shapes is a sphere.
+
+Unweighted mean of the ten test shapes:
+
+| Model | MAE deg | Median deg | < 11.25 | < 22.5 | < 30 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Stokes | 13.377388872343994 | 9.536534296210721 | 0.5982262280625874 | 0.8519274727570869 | 0.9027965391502392 |
+| Analyzers | 12.557615966921844 | 11.356604649996935 | 0.5426487380682091 | 0.8852235132907287 | 0.9424685745580904 |
+| RGB | 15.444956105901841 | 14.770316127148522 | 0.4301128252362901 | 0.7929951482872235 | 0.8828321328812228 |
+| Fresnel specular | 59.48839627080628 | 56.3276571685431 | 0.06079611972151493 | 0.15269485995340953 | 0.2214812807656296 |
+| Fresnel oracle | 38.60365651186929 | 37.7823779986261 | 0.1205388237599004 | 0.27535944020195247 | 0.38491909901410193 |
+
+Per test shape, mean angular error in degrees, copied from each test row in `summary.json`:
+
+| Shape | Stokes | Analyzers | RGB | Fresnel specular | mean \|S3\| / S0 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 001 ellipsoid | 12.359363921911577 | 8.421052665137747 | 9.063417020379697 | 60.449960012899375 | 4.2221922217841003e-10 |
+| 002 ellipsoid | 13.74608403448497 | 10.386444438653568 | 14.007102753317174 | 59.27875313303845 | 1.0655972216605647e-10 |
+| 003 rounded box | 9.79740874604654 | 8.56469428751544 | 9.054066418730866 | 55.793546055348514 | 4.259178319005616e-11 |
+| 004 rounded box | 11.581611824272848 | 7.950395439005457 | 9.501501639684001 | 56.69836646603799 | 4.2824400527289145e-11 |
+| 005 bumpy | 14.603138537397527 | 13.923916390158643 | 16.560474594123995 | 61.322302138624956 | 3.6303364550292756e-10 |
+| 006 bumpy | 13.197945167202661 | 7.3697443664031725 | 9.802775290047295 | 60.90263988713123 | 1.023193579600867e-10 |
+| 007 capsule | 11.560773973194152 | 13.155278018873437 | 14.856420333830131 | 52.3375823629614 | 6.317605482921587e-12 |
+| 008 torus | 13.466673562931142 | 14.804939542995424 | 18.465190725865206 | 65.6873483489711 | 1.299582247983398e-07 |
+| 009 cylinder | 13.109321176617385 | 16.758187637660516 | 20.830899690142243 | 55.678918028530745 | 1.3344701711582268e-08 |
+| 010 cone | 20.351567779381128 | 24.241506882815024 | 32.30771259289781 | 66.73454627451893 | 9.325175788794233e-08 |
+
+The per-shape median and the three fractions are in `summary.json` under each test row. The contact sheet is `outputs/film/sfp/02_heldout_shapes/test_contact.png`.
+
+SfPUEL's archives were not downloaded. The training zip is about 20,000 Mitsuba 2 environment-map renders of bare objects, including metal, with no polyethylene film. The test archive stores four polarizer PNGs as relative 8-bit or 16-bit intensities, with no linear Stokes vector and no S3, and it scores an object mask. Those images are not a filmed-gripper test. The angle columns use their strict cutoffs so a later table can be read beside theirs. The pixels and the lighting remain ours.
 

@@ -635,6 +635,11 @@ def _family_spec(family: str, local: np.random.Generator) -> dict:
     return {"tube_radius": tube, "body_length": length, "minor_radius": tube * 0.35}
 
 
+def sample_shape_params(family: str, rng: np.random.Generator) -> dict:
+    """Shape parameters for one family. The ranges are the catalog ranges."""
+    return _family_spec(family, rng)
+
+
 def shape_catalog(seed: int = 0) -> list[dict]:
     """50 training shapes and 10 held-out shapes. Test seeds are not training seeds."""
     rng = np.random.default_rng(int(seed))

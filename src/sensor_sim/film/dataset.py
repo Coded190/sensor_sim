@@ -144,8 +144,7 @@ def validate_dataset(root: Path) -> dict:
 def render_dataset() -> dict:
     configure_logging()
     rendering = rendering_config()
-    if str(rendering["variant"]).startswith("cuda"):
-        raise RuntimeError(f"refusing GPU variant {rendering['variant']}")
+    logger.info("film dataset stage=render variant=%s", rendering["variant"])
     scene = scene_config()
     dataset = dataset_config()
     samples = iter_views(dataset, float(scene["lighting"]["intensity"]))
