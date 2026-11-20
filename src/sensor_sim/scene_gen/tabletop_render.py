@@ -51,7 +51,15 @@ SCENE_ROOT = Path("dataset/qualification/tabletop_scenes")
 
 
 def mitsuba_bsdf(material: dict) -> dict:
-    """Convert one package or qualified material dict into a Mitsuba BSDF."""
+    """Convert one package material or MaterialSpec into a Mitsuba BSDF.
+
+    A MaterialSpec uses the canonical mapper in ``material_spec.to_mitsuba``.
+    Package dictionaries keep the scalar path below.
+    """
+    if material.get("schema_version") == "material_spec_v1":
+        from sensor_sim.scene_gen.material_spec import to_mitsuba
+
+        return to_mitsuba(material, package_root=Path(material["package_root"]) if material.get("package_root") else None)
     kind = material.get("type")
     if kind == "diffuse":
         return {"type": "diffuse", "reflectance": {"type": "rgb", "value": [float(channel) for channel in material["reflectance"]]}}

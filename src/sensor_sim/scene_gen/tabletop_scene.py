@@ -25,6 +25,7 @@ from sensor_sim.scene_gen.tabletop_layout import load_mesh, place_tabletop, supp
 from sensor_sim.scene_gen.task_replay import replay
 from sensor_sim.scene_gen.task_retrieve import catalog_snapshot_hash, embedding_backend
 from sensor_sim.scene_gen.task_schema import SCHEMA_VERSION, document_hash, validate_bundle
+from sensor_sim.scene_gen.scene_context import require_scene_context
 from sensor_sim.scene_gen.task_size import accept_scale, mesh_bounds
 
 logger = logging.getLogger("sensor_sim.scene_gen.tabletop_scene")
@@ -381,6 +382,7 @@ def _bundle(catalog, task_id, description, seed, room, object_poses, object_rela
         "validation": {"valid": True, "visual_verification": "pending", "admitted": False},
     }
     validate_bundle(bundle)
+    require_scene_context(selections, room_kind="room")
     return bundle
 
 

@@ -32,6 +32,7 @@ from sensor_sim.scene_gen.mesh_io import write_obj
 from sensor_sim.scene_gen.metric_audit import CHANNEL_NAMES
 from sensor_sim.scene_gen.narrow import mesh_clearance
 from sensor_sim.scene_gen.room_generator import _daylight_emitters, _emitter_record
+from sensor_sim.scene_gen.scene_context import require_scene_context
 from sensor_sim.scene_gen.scene_quality import _fit_origin, _peak_ndc
 from sensor_sim.scene_gen.semantic_assets import BUILDERS, build_asset, interior_is_open
 from sensor_sim.scene_gen.semantic_schema import SCHEMA_VERSION, RecipeError, require_recipe
@@ -183,11 +184,12 @@ def place_recipe(name: str, assets: dict | None = None, asset_catalog: Path = AS
         objects.append(placed)
         if not placed["inside_zone"] or not placed["on_support"]:
             failures.append({"name": f"support:{instance_id}", "passed": False})
-    for index, left in enumerate(objects):
-        for right in objects[index + 1 :]:
-            clearance = float(mesh_clearance(left, right)["clearance_m"])
-            if clearance < MIN_SEPARATION_M:
-                failures.append({"name": f"clearance:{left['instance_id']}:{right['instance_id']}", "passed": False, "clearance_m": clearance})
+    from sensor_sim.scene_gen.placement_separation import PlacementSeparationError, require_outside
+
+    try:
+        require_outside(objects, minimum_m=MIN_SEPARATION_M)
+    except PlacementSeparationError as exc:
+        failures.append({"name": "object_inside", "passed": False, "reason": str(exc)})
     clutter = _clutter(objects, support_body, recipe["clutter_level"])
     if name.startswith("workbench") and recipe["clutter_level"] == "high" and clutter["free_rectangle_m"][0] < 0.25:
         failures.append({"name": "free_rectangle", "passed": False, "free_rectangle_m": clutter["free_rectangle_m"]})
@@ -1157,6 +1159,7 @@ def _bundle(placed, packages, asset_catalog: Path) -> dict:
         "validation": {"valid": True, "visual_verification": "pending", "admitted": False},
     }
     # Workbench clutter comparisons share one camera. Freeze the low camera onto the later levels.
+    require_scene_context([*room_components, *furniture_instances, *object_instances], room_kind=recipe["scene_type"])
     return bundle
 
 

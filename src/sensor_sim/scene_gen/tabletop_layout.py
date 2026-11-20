@@ -98,6 +98,21 @@ def place_tabletop(
             found["tries"],
             "none" if clearance is None else f"{clearance:.4f}",
         )
+    from sensor_sim.scene_gen.placement_separation import PlacementSeparationError, require_outside
+
+    try:
+        require_outside(
+            [{"instance_id": row["instance_id"], "vertices": row["world"], "faces": row["faces"]} for row in placed],
+            minimum_m=float(minimum_separation_m),
+        )
+    except PlacementSeparationError as exc:
+        logger.info("tabletop_layout event=object_inside reason=%s", exc)
+        return {
+            "valid": False,
+            "poses": {row["instance_id"]: row["matrix"] for row in placed},
+            "relations": relations,
+            "collision_log": {"termination": "object_inside", "reason": str(exc), "attempts": attempts, "seed": int(seed)},
+        }
     poses = {row["instance_id"]: row["matrix"] for row in placed}
     occupancy = _occupancy(placed, support)
     logger.info(

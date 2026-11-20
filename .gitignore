@@ -6,3 +6,5 @@ __pycache__/
 *.egg-info/
 tools/
 dataset/
+# Local visual-review handoffs (zip and blend). Do not commit.
+local_review/

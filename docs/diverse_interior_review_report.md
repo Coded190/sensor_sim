@@ -4,7 +4,7 @@ Six furnished rooms were generated for visual inspection. RGB is the review prod
 
 Open the portable copy on a local machine:
 
-`/home/cmoore/diverse_interior_review.zip`
+`local_review/diverse_interior_review.zip`
 
 Unzip it and open `diverse_interior_review/index.html`. Each room starts with the primary interior overview, then the secondary view, then the task close-up. The links are relative. The zip contains that HTML file and 18 PNGs. It has no EXR, Stokes, mask, or npy files.
 
@@ -75,7 +75,7 @@ Workshop, seed 17516. Role counts: 1 furniture, 20 objects.
 ## 4. Gallery and report paths
 
 - Gallery: `dataset/qualification/diverse_interior_review/review/index.html`
-- Zip: `/home/cmoore/diverse_interior_review.zip` (34,921,660 bytes)
+- Zip: `local_review/diverse_interior_review.zip` (34,921,660 bytes)
 - This report: `docs/diverse_interior_review_report.md`
 - Scene bundles: `dataset/qualification/diverse_interior_review/<scene>/<run>/`
 
@@ -207,7 +207,7 @@ Untracked output, under `dataset/qualification/diverse_interior_review/`:
 - one bundle directory per scene, including `recipe.json`, `bundle.json`, `scene.json`, and `render_rgb_v1/`
 - `review/index.html`
 
-Also `/home/cmoore/diverse_interior_review.zip`.
+Also `local_review/diverse_interior_review.zip`.
 
 No protected module was edited. No dependency was added. Mitsuba, Dr.Jit, Blender, and CUDA pins were not changed.
 

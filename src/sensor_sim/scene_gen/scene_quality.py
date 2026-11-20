@@ -396,6 +396,16 @@ def place_recipe(catalog: Path, recipe_id: str, room: dict, seed: int) -> dict:
             }
         placed.append(found["pose"])
         relations.append(found["relation"])
+    from sensor_sim.scene_gen.placement_separation import PlacementSeparationError, require_outside
+
+    try:
+        require_outside(
+            [{"instance_id": row["instance_id"], "vertices": row["world"], "faces": row["faces"]} for row in placed],
+            minimum_m=float(recipe["separation_m"]),
+        )
+    except PlacementSeparationError as exc:
+        logger.info("scene_quality event=object_inside recipe=%s reason=%s", recipe_id, exc)
+        return {"valid": False, "collision_log": {"termination": "object_inside", "reason": str(exc), "attempts": attempts, "seed": int(seed)}}
     occupancy = _occupancy(placed, support)
     logger.info(
         "scene_quality event=placed recipe=%s seed=%d instances=%d fraction=%.4f",

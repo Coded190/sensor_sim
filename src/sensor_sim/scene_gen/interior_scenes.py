@@ -24,6 +24,7 @@ from sensor_sim.scene_gen.narrow import mesh_clearance
 from sensor_sim.scene_gen.room_generator import _daylight_emitters, _emitter_record, _shell_meshes, package_profile
 from sensor_sim.scene_gen.scene_quality import _fit_origin, _peak_ndc
 from sensor_sim.scene_gen.room_schema import make_specification
+from sensor_sim.scene_gen.scene_context import require_scene_context
 from sensor_sim.scene_gen.semantic_assets import build_asset as semantic_build
 from sensor_sim.scene_gen.mesh_io import write_obj
 from sensor_sim.scene_gen.semantic_composition import (
@@ -500,6 +501,13 @@ def validate_layout(items: list[dict], spec: dict) -> list[dict]:
             found = mesh_clearance({"vertices": left["vertices"], "faces": left["faces"]}, {"vertices": right["vertices"], "faces": right["faces"]})
             if float(found["clearance_m"]) < SEPARATION:
                 failures.append({"name": f"clearance:{left['instance_id']}:{right['instance_id']}", "passed": False, "clearance_m": found["clearance_m"]})
+    from sensor_sim.scene_gen.placement_separation import PlacementSeparationError, require_outside
+
+    allowed = {frozenset((item["instance_id"], item["support_parent"])) for item in items if item.get("support_parent")}
+    try:
+        require_outside(items, allowed_pairs=allowed, minimum_m=SEPARATION)
+    except PlacementSeparationError as exc:
+        failures.append({"name": "object_inside", "passed": False, "reason": str(exc)})
     return failures
 
 
@@ -993,6 +1001,7 @@ def write_scene(name: str, catalog: Path) -> Path:
     cameras = interior_cameras(spec, items, _task_parent(name, items))
     lighting = _lighting(spec, _lamp_center(name, items, spec))
     instances = _room_instances(spec, catalog) + [_public_item(item) for item in items]
+    require_scene_context(instances, room_kind=name)
     relations = []
     for item in items:
         if item.get("support_parent"):
@@ -1206,7 +1215,7 @@ def write_gallery(review: Path) -> None:
     review.write_text("\n".join(body), encoding="utf-8")
 
 
-def pack_zip(zip_path: Path = Path("/home/cmoore/diverse_interior_review.zip")) -> None:
+def pack_zip(zip_path: Path = Path("local_review/diverse_interior_review.zip")) -> None:
     import shutil
     import zipfile
 
@@ -1233,6 +1242,7 @@ def pack_zip(zip_path: Path = Path("/home/cmoore/diverse_interior_review.zip")) 
     html.append("</body></html>")
     (staging / "index.html").write_text("\n".join(html), encoding="utf-8")
     zip_path = Path(zip_path)
+    zip_path.parent.mkdir(parents=True, exist_ok=True)
     if zip_path.exists():
         zip_path.unlink()
     with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
