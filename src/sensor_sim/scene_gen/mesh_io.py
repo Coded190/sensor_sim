@@ -62,9 +62,15 @@ def write_mesh(mesh: dict, *, name: str = "mesh") -> bytes:
         lines.append(f"vt {texcoord[0]:.9f} {texcoord[1]:.9f}")
     for normal in normals.reshape(-1, 3):
         lines.append(f"vn {normal[0]:.9f} {normal[1]:.9f} {normal[2]:.9f}")
-    for face in mesh["corners"]:
+    face_materials = list(mesh.get("face_materials") or [])
+    active_material = None
+    for face_index, face in enumerate(mesh["corners"]):
         if len(face) < 3:
             raise ObjError("reason=face_size")
+        material_name = face_materials[face_index] if face_index < len(face_materials) else None
+        if material_name and material_name != active_material:
+            lines.append(f"usemtl {material_name}")
+            active_material = material_name
         tokens = []
         for corner in face:
             vertex, texcoord, normal = corner
@@ -108,6 +114,8 @@ def read_mesh(path: Path | bytes | str) -> dict:
     texcoords: list[list[float]] = []
     normals: list[list[float]] = []
     corners: list[list[tuple[int, int | None, int | None]]] = []
+    face_materials: list[str] = []
+    active_material = "default"
     for raw in text.splitlines():
         line = raw.strip()
         if line == "" or line.startswith("#"):
@@ -120,6 +128,8 @@ def read_mesh(path: Path | bytes | str) -> dict:
             texcoords.append([float(parts[1]), float(parts[2])])
         elif kind == "vn":
             normals.append([float(parts[1]), float(parts[2]), float(parts[3])])
+        elif kind == "usemtl" and len(parts) >= 2:
+            active_material = parts[1]
         elif kind == "f":
             face = []
             for token in parts[1:]:
@@ -127,10 +137,17 @@ def read_mesh(path: Path | bytes | str) -> dict:
             if len(face) < 3:
                 raise ObjError("reason=face_size")
             corners.append(face)
+            face_materials.append(active_material)
     vertex_array = np.asarray(vertices, dtype=np.float64) if vertices else np.zeros((0, 3), dtype=np.float64)
     texcoord_array = np.asarray(texcoords, dtype=np.float64) if texcoords else np.zeros((0, 2), dtype=np.float64)
     normal_array = np.asarray(normals, dtype=np.float64) if normals else np.zeros((0, 3), dtype=np.float64)
-    return {"vertices": vertex_array, "texcoords": texcoord_array, "normals": normal_array, "corners": corners}
+    return {
+        "vertices": vertex_array,
+        "texcoords": texcoord_array,
+        "normals": normal_array,
+        "corners": corners,
+        "face_materials": face_materials,
+    }
 
 
 def validate_uv(mesh: dict, *, texture_resolution: tuple[int, int], island_padding: float = 0.002) -> dict:

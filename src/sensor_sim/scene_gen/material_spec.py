@@ -28,7 +28,19 @@ ROUGHNESS_NOTE = (
     "Mitsuba alpha = Blender roughness squared, and Blender roughness = sqrt(Mitsuba alpha). "
     "A source roughness map is converted once. A map that already stores alpha is not converted again."
 )
-TEXTURE_ROLES = frozenset({"base_color", "roughness_blender", "alpha_mitsuba", "normal_opengl"})
+TEXTURE_ROLES = frozenset({
+    "base_color",
+    "roughness_blender",
+    "alpha_mitsuba",
+    "normal_opengl",
+    "metallic",
+    "ambient_occlusion",
+    "height",
+    "opacity",
+    "orm_packed",
+})
+UNSUPPORTED_TEXTURE_ROLES = frozenset({"metallic", "ambient_occlusion", "height", "opacity", "orm_packed"})
+ORM_CHANNELS = "R ambient occlusion, G roughness, B metallic. The file is non-color data, not sRGB."
 TEXTURE_COLOR_SPACES = frozenset({"srgb", "non_color"})
 INPUT_CLASSES = frozenset({"authored_appearance", "procedural_parameter", "measured_property", "assumed_preset"})
 
@@ -216,6 +228,41 @@ def preset(name: str) -> dict:
     return make_spec(f"preset_{name}", family, parameters, preset=name)
 
 
+def texture_binding(spec: dict) -> list[dict]:
+    """Say what the pinned Mitsuba path does with each texture. Nothing is dropped quietly."""
+    spec = validate_spec(spec)
+    roles = {item["role"] for item in spec.get("textures") or []}
+    rows = []
+    for record in spec.get("textures") or []:
+        role = record["role"]
+        if role in UNSUPPORTED_TEXTURE_ROLES:
+            status = "unsupported"
+            reason = "cuda_ad_spectral_polarized has no tested image parameter for this role"
+        elif role == "roughness_blender" and "alpha_mitsuba" in roles:
+            status = "preview_only"
+            reason = "Blender roughness is converted once into alpha_mitsuba and is not bound a second time"
+        elif role == "roughness_blender":
+            status = "failed"
+            reason = "unresolved_roughness_map"
+        elif role in {"base_color", "alpha_mitsuba", "normal_opengl"}:
+            status = "bound"
+            reason = "to_mitsuba maps this role"
+        else:
+            status = "failed"
+            reason = "unknown_role"
+        row = {
+            "role": role,
+            "path": record["path"],
+            "status": status,
+            "reason": reason,
+            "color_space": record["color_space"],
+        }
+        if role == "orm_packed":
+            row["channel_layout"] = ORM_CHANNELS
+        rows.append(row)
+    return rows
+
+
 def to_mitsuba(spec: dict, *, package_root: Path | None = None) -> dict:
     """Build one Mitsuba BSDF dict. An unsupported family raises. Nothing is substituted.
 
@@ -252,8 +299,16 @@ def to_mitsuba(spec: dict, *, package_root: Path | None = None) -> dict:
         raise MaterialSpecError(f"reason=unsupported_bsdf type={family}")
     if mapped.get("type") != family and not (family in _DIRECT and mapped.get("type") == family):
         raise MaterialSpecError(f"reason=substituted requested={family} got={mapped.get('type')}")
-    mapped = _apply_textures(mapped, family, textures)
-    logger.info("material_spec event=mitsuba material_id=%s family=%s textures=%d", spec["material_id"], family, len(textures))
+    mapped = _apply_textures(mapped, family, [item for item in textures if item["record"]["role"] not in UNSUPPORTED_TEXTURE_ROLES])
+    binding = texture_binding(spec)
+    unsupported = [row["role"] for row in binding if row["status"] == "unsupported"]
+    logger.info(
+        "material_spec event=mitsuba material_id=%s family=%s textures=%d unsupported=%s",
+        spec["material_id"],
+        family,
+        len(textures),
+        ",".join(unsupported) if unsupported else "none",
+    )
     return mapped
 
 
