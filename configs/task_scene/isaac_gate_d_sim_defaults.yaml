@@ -1,0 +1,18 @@
+# Simulation-only values. These are not measurements and they are not copied
+# into asset_extension_v1.
+purpose: simulation_only
+can_density_kg_m3:
+  value: 400.0
+  units: kg/m^3
+  provenance: default
+  method: assumed plastic density, not a measured mass
+friction:
+  value: 0.8
+  provenance: default
+restitution:
+  value: 0.0
+  provenance: default
+settle_drift_limit_m: 0.005
+settle_window_s: 0.5
+position_agreement_m: 0.001
+orientation_agreement_deg: 0.1

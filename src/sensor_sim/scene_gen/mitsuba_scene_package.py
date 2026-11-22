@@ -226,6 +226,83 @@ def replay_infinigen_scene(manifest_path: Path, png: Path, *, spp: int = 4, seed
     return second
 
 
+def build_mitsuba_scene(manifest: dict, asset_root: Path, render_config: dict | None = None, *, resolved: dict | None = None) -> dict:
+    """Build a Mitsuba scene from the shared connector output.
+
+    Each instance keeps its own OBJ shape. Mitsuba's instance plugin cannot
+    override the referenced shape's material, so two instances that need
+    different materials must not share one shape group. This loader does not
+    share shape groups. Collision OBJs are not visible geometry.
+    """
+    import mitsuba as mi
+
+    from sensor_sim.scene_gen.scene_manifest import canonical_to_mitsuba, pinhole_camera_to_mitsuba
+    from sensor_sim.scene_gen.task_scene_connector import resolve_scene_files
+
+    require_variant()
+    if resolved is None:
+        catalog_path = (render_config or {}).get("catalog_path")
+        manifest_path = (render_config or {}).get("manifest_path")
+        library_root = (render_config or {}).get("library_root")
+        if catalog_path is None or manifest_path is None or library_root is None:
+            raise RuntimeError("reason=connector_inputs_missing")
+        resolved = resolve_scene_files(Path(manifest_path), Path(catalog_path), Path(library_root))
+    expected = (render_config or {}).get("manifest_sha256")
+    digest = resolved["manifest_sha256"]
+    if expected is not None and expected != digest:
+        raise RuntimeError("reason=manifest_hash_mismatch")
+    omitted = set((render_config or {}).get("omit_instance_ids") or [])
+    camera = resolved["camera"]
+    width = int(camera["width"])
+    height = int(camera["height"])
+    fov = float(np.degrees(2.0 * np.arctan(width / (2.0 * float(camera["fx"])))))
+    scene = {
+        "type": "scene",
+        "integrator": {"type": "stokes", "integrator": {"type": "path", "max_depth": 5}},
+        "sensor": {
+            "type": "perspective",
+            "fov": fov,
+            "to_world": mi.ScalarTransform4f(pinhole_camera_to_mitsuba(np.asarray(camera["world_from_camera"], dtype=np.float64))),
+            "sampler": {"type": "independent"},
+            "film": {"type": "hdrfilm", "width": width, "height": height, "pixel_format": "rgb", "rfilter": {"type": "box"}},
+        },
+    }
+    light = resolved["lights"][0]
+    radiance = float(light["radiometry"]["value"])
+    scene["emitter"] = {"type": "constant", "radiance": {"type": "rgb", "value": radiance}}
+    mapping = {}
+    for instance in resolved["instances"]:
+        if instance.get("omit") or instance["instance_id"] in omitted:
+            continue
+        mesh = Path(instance["render_path"])
+        if mesh.name != "render.obj":
+            raise RuntimeError(f"reason=mitsuba_collision_mesh_rejected path={mesh}")
+        scene[instance["instance_id"]] = {
+            "type": "obj",
+            "filename": str(mesh),
+            "to_world": mi.ScalarTransform4f(canonical_to_mitsuba(np.asarray(instance["world_from_asset"], dtype=np.float64))),
+        }
+        mapping[instance["instance_id"]] = instance["instance_id"]
+    report = {
+        "manifest_sha256": digest,
+        "mitsuba_version": mi.__version__,
+        "variant": mi.variant(),
+        "integrator": "stokes/path",
+        "approximations": [
+            "OBJ MTL baked maps are used as the shape materials. A single BSDF is not substituted over every material region.",
+            "Lighting mode is relative. The constant emitter value is not a calibrated radiometric conversion.",
+            "Stokes output is a render product, not a polarization qualification.",
+        ],
+        "unsupported": [
+            "per-instance material override on one shared shape group",
+            "scene.traverse() on this Mitsuba 3.9.1 build exposes sensor.to_world and not shape to_world. A new pose is applied by rebuilding the scene from the manifest.",
+        ],
+        "instance_map": mapping,
+        "calibration": light["calibration"],
+    }
+    return {"scene": scene, "instance_map": mapping, "report": report}
+
+
 def identity_key(mesh_bytes: bytes) -> str:
     import hashlib
 
